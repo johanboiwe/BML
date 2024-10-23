@@ -1,0 +1,186 @@
+#!/bin/bash
+
+# Default settings
+LIB_TYPE="static"
+ENABLE_DEBUG="false"
+COMPILER="clang++"  # Default compiler
+SHARED_LIB_EXT=".so"  # Default for Linux
+LINKER_FLAGS="-shared"  # Default for Linux
+ARCH="x86_64"  # Default to 64-bit architecture
+ARCH_FLAGS="-m64"  # Default for 64-bit
+PREFIX="/usr/local"  # Default installation directory
+INSTALL_BOTH="true"  # Do install both by default
+
+# Help message
+show_help() {
+  echo "Usage: ./configure [options]"
+  echo
+  echo "Options:"
+  echo "  --enable-shared       Build shared library"
+  echo "  --enable-static       Build static library"
+  echo "  --enable-debug        Enable debug build with debug symbols"
+  echo "  --enable-32bit        Build for 32-bit architecture"
+  echo "  --enable-both         Build both static and shared libraries (default)"
+  echo "  --prefix=<dir>        Specify installation directory (default: /usr/local)"
+  echo "  --compiler=<compiler> Specify the compiler to use (default: clang++)"
+  echo "  --help                Display this help message"
+}
+
+# Detect if the system is macOS or Linux
+OS_TYPE=$(uname)
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+  SHARED_LIB_EXT=".dylib"  # macOS uses .dylib for shared libraries
+  LINKER_FLAGS="-dynamiclib"  # Use -dynamiclib for macOS to create .dylib files
+fi
+
+# Parse command line arguments
+for arg in "$@"; do
+  case $arg in
+    --enable-shared)
+      LIB_TYPE="shared"
+      shift
+      ;;
+    --enable-static)
+      LIB_TYPE="static"
+      shift
+      ;;
+    --enable-debug)
+      ENABLE_DEBUG="true"
+      shift
+      ;;
+    --enable-32bit)
+      ARCH="i386"
+      ARCH_FLAGS="-m32"
+      shift
+      ;;
+    --enable-both)
+      INSTALL_BOTH="true"
+      shift
+      ;;
+    --prefix=*)
+      PREFIX="${arg#*=}"
+      shift
+      ;;
+    --compiler=*)
+      COMPILER="${arg#*=}"
+      shift
+      ;;
+    --help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+# Check if the compiler exists
+if ! command -v "$COMPILER" &> /dev/null; then
+  echo "Error: Compiler '$COMPILER' not found. Please install it or specify a different compiler using --compiler option."
+  exit 1
+fi
+
+# Check if the compiler can compile a simple program
+echo "int main() { return 0; }" > test_compile.cpp
+if ! $COMPILER $ARCH_FLAGS test_compile.cpp -o test_compile &> /dev/null; then
+  echo "Error: Compiler '$COMPILER' failed to compile a simple test program for $ARCH."
+  rm -f test_compile.cpp
+  exit 1
+fi
+rm -f test_compile.cpp test_compile
+
+# Check if the compiler can link a shared library
+echo "int test() { return 0; }" > test_link.cpp
+if ! $COMPILER $ARCH_FLAGS test_link.cpp -o test_link ${LINKER_FLAGS} &> /dev/null; then
+  echo "Error: Compiler '$COMPILER' failed to link a shared library for $ARCH."
+  rm -f test_link.cpp test_link
+  exit 1
+fi
+rm -f test_link.cpp test_link
+
+# Generate the Makefile based on the options
+cat > Makefile <<EOF
+# Auto-generated Makefile
+
+# Compiler and flags
+CC = ${COMPILER}
+CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -Iinclude ${ARCH_FLAGS}
+
+# Enable debug flags based on the variable
+ENABLE_DEBUG = ${ENABLE_DEBUG}
+
+ifeq (\$(ENABLE_DEBUG), true)
+    CXXFLAGS += -g -O0
+else
+    CXXFLAGS += -O3 -g0
+endif
+
+# Source files
+SOURCES = source/bml.cpp source/testMatrix.cpp
+
+# Object files
+OBJ_DIR = obj
+OBJECTS = \$(SOURCES:%.cpp=\$(OBJ_DIR)/%.o)
+
+# Library paths
+LIB_DIR = lib
+STATIC_LIB = \$(LIB_DIR)/libBML.a
+SHARED_LIB = \$(LIB_DIR)/libBML${SHARED_LIB_EXT}
+
+# Library type
+LIB_TYPE = ${LIB_TYPE}
+
+# Default target
+all: \$(LIB_TYPE)
+
+# Build static library
+static: \$(STATIC_LIB)
+
+\$(STATIC_LIB): \$(OBJECTS)
+	@mkdir -p \$(LIB_DIR)
+	ar rcs \$(STATIC_LIB) \$(OBJECTS)
+
+# Build shared library
+shared: \$(SHARED_LIB)
+
+\$(SHARED_LIB): \$(OBJECTS)
+	@mkdir -p \$(LIB_DIR)
+	\$(CC) \$(OBJECTS) -o \$(SHARED_LIB) ${LINKER_FLAGS}
+
+# Correct Compile object files with .o extension
+\$(OBJ_DIR)/%.o: %.cpp
+	@mkdir -p \$(OBJ_DIR)/\$(dir \$<)
+	\$(CC) \$(CXXFLAGS) -fPIC -c \$< -o \$(OBJ_DIR)/\$(<:.cpp=.o)
+
+# Install target (either both or one type)
+install: \$(LIB_TYPE)
+	@mkdir -p \$(PREFIX)/lib
+	@mkdir -p \$(PREFIX)/include
+	@if [ "\${INSTALL_BOTH}" = "true" ]; then \\
+	  if [ -f "\$(STATIC_LIB)" ]; then cp \$(STATIC_LIB) \$(PREFIX)/lib/; fi; \\
+	  if [ -f "\$(SHARED_LIB)" ]; then cp \$(SHARED_LIB) \$(PREFIX)/lib/; fi; \\
+	else \\
+	  if [ -f "\$(STATIC_LIB)" ] && [ "\$(LIB_TYPE)" = "static" ]; then cp \$(STATIC_LIB) \$(PREFIX)/lib/; fi; \\
+	  if [ -f "\$(SHARED_LIB)" ] && [ "\$(LIB_TYPE)" = "shared" ]; then cp \$(SHARED_LIB) \$(PREFIX)/lib/; fi; \\
+	fi
+	@cp include/*.hpp \$(PREFIX)/include/
+
+# Clean target
+clean:
+	rm -rf \$(LIB_DIR)/* \$(OBJ_DIR)/*
+
+EOF
+
+# Output summary
+echo "Configuration complete."
+echo "Library type: ${LIB_TYPE}"
+echo "Debugging enabled: ${ENABLE_DEBUG}"
+echo "Compiler: ${COMPILER}"
+echo "Architecture: ${ARCH}"
+echo "Install both static and shared libraries: ${INSTALL_BOTH}"
+echo "Install prefix: ${PREFIX}"
+echo "Shared Library Extension: ${SHARED_LIB_EXT}"
+
