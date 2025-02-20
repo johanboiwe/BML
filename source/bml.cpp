@@ -101,37 +101,30 @@ Matrix<T>::Matrix(unsigned int numRows, unsigned int numCols) : rows(numRows), c
     }
 }
 template<typename T>
-Matrix<T>::Matrix( Matrix<T>& oldMatrix)
+Matrix<T>::Matrix(const Matrix<T>& oldMatrix)
 {
     rows = oldMatrix.numRows();
     cols = oldMatrix.numCols();
 
     // Debug print: matrix dimensions
-    std::cout << "[DEBUG] Copying Matrix: " << rows << " rows, " << cols << " cols" << std::endl;
+    //std::cout << "[DEBUG] Copying Matrix: " << rows << " rows, " << cols << " cols" << std::endl;
 
     // Convert the old matrix to a byte stream
     std::vector<char> byteVector = oldMatrix.toByteStream();
-    printByteVector(byteVector);
+    //printByteVector(byteVector);
 
     // Debug print: byte stream size
-    std::cout << "[DEBUG] Byte stream size: " << byteVector.size() << " bytes" <<"its data is" << std::endl;
+   // std::cout << "[DEBUG] Byte stream size: " << byteVector.size() << " bytes" <<"its data is" << std::endl;
 
 
     // Get a pointer to the underlying byte array
     char* byteStream = byteVector.data();
-for (size_t i = 0; i < byteVector.size(); i++) {
-    // Cast the char to unsigned char then to int, to display its numeric value.
-    std::cout << static_cast<int>(static_cast<unsigned char>(byteStream[i])) << " ";
-}
-std::cout << std::endl;
 
 
 
     // Initialise the matrix using the byte stream
     initFromByteStream(byteStream, byteVector.size());
 
-    // Debug print: copy complete
-    std::cout << "[DEBUG] Matrix copy complete." << std::endl;
 }
 template<typename T>
 unsigned int Matrix<T>::numRows() const
