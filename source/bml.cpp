@@ -93,7 +93,11 @@ Matrix<T>::Matrix(unsigned int numRows, unsigned int numCols) : rows(numRows), c
         data[i].resize(numCols);  // Resize each row to have `numCols` columns
     }
 }
+template<typename T>
+Matrix<T>::Matrix(Matrix<T>& oldMatrix)
+    {
 
+    }
 
 template<typename T>
 unsigned int Matrix<T>::numRows() const

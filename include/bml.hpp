@@ -44,6 +44,8 @@ public:
 
     Matrix(unsigned int numRows, unsigned int numCols);
 
+    Matrix(Matrix<T>& oldMatrix);
+
     unsigned int numRows() const;
 
     unsigned int numCols() const;
