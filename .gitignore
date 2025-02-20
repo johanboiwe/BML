@@ -8,3 +8,9 @@ BML.cbp
 BML.depend
 
 BML.layout
+
+.objs/
+
+obj/
+
+BML

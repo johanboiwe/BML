@@ -96,7 +96,10 @@ Matrix<T>::Matrix(unsigned int numRows, unsigned int numCols) : rows(numRows), c
 template<typename T>
 Matrix<T>::Matrix(Matrix<T>& oldMatrix)
     {
-
+    rows = oldMatrix.numRows();
+    cols = oldMatrix.numCols();
+    std::vector<char> byteVector = oldMatrix.toByteStream();
+    initFromByteStream(byteVector.data(), byteVector.size());
     }
 
 template<typename T>
