@@ -221,8 +221,8 @@ void testMatrix(void) {
     // Test boolean type
     testBooleanMatrix();
 
-    Matrix<int> toCopy(5,5);
-    toCopy.fill(5);
+    Matrix<int> toCopy(3,3);
+    toCopy.fill(12345);
     std::cout<<"Matrix to be copied: \n" << toCopy.toString();
     Matrix<int> copied(toCopy);
     std::cout<<"Matrix that has been copied \n" << copied.toString();

@@ -5,7 +5,14 @@
 #include <sstream> // Required for stringstream
 #include <string>
 #include <type_traits>
-
+void printByteVector(const std::vector<char>& byteVector) {
+    std::cout << "[DEBUG] byteVector contents: ";
+    for (size_t i = 0; i < byteVector.size(); ++i) {
+        // Cast the char to unsigned char and then to int to get the numeric value.
+        std::cout << static_cast<int>(static_cast<unsigned char>(byteVector[i])) << " ";
+    }
+    std::cout << std::endl;
+}
 
 template<typename T>
 Matrix<T>::Iterator::Iterator(Matrix<T>& mat, signed long r, signed long c, TraversalType traversalType)
@@ -94,14 +101,38 @@ Matrix<T>::Matrix(unsigned int numRows, unsigned int numCols) : rows(numRows), c
     }
 }
 template<typename T>
-Matrix<T>::Matrix(Matrix<T>& oldMatrix)
-    {
+Matrix<T>::Matrix( Matrix<T>& oldMatrix)
+{
     rows = oldMatrix.numRows();
     cols = oldMatrix.numCols();
-    std::vector<char> byteVector = oldMatrix.toByteStream();
-    initFromByteStream(byteVector.data(), byteVector.size());
-    }
 
+    // Debug print: matrix dimensions
+    std::cout << "[DEBUG] Copying Matrix: " << rows << " rows, " << cols << " cols" << std::endl;
+
+    // Convert the old matrix to a byte stream
+    std::vector<char> byteVector = oldMatrix.toByteStream();
+    printByteVector(byteVector);
+
+    // Debug print: byte stream size
+    std::cout << "[DEBUG] Byte stream size: " << byteVector.size() << " bytes" <<"its data is" << std::endl;
+
+
+    // Get a pointer to the underlying byte array
+    char* byteStream = byteVector.data();
+for (size_t i = 0; i < byteVector.size(); i++) {
+    // Cast the char to unsigned char then to int, to display its numeric value.
+    std::cout << static_cast<int>(static_cast<unsigned char>(byteStream[i])) << " ";
+}
+std::cout << std::endl;
+
+
+
+    // Initialise the matrix using the byte stream
+    initFromByteStream(byteStream, byteVector.size());
+
+    // Debug print: copy complete
+    std::cout << "[DEBUG] Matrix copy complete." << std::endl;
+}
 template<typename T>
 unsigned int Matrix<T>::numRows() const
 {
@@ -135,14 +166,68 @@ void Matrix<T>::initFromByteStream(const char* byteStream, unsigned int byteSize
         throw std::runtime_error("Invalid byte stream size");
     }
 
-    std::memcpy(data.data(), byteStream, byteSize);
+    // Resize the outer vector to have 'rows' elements.
+    data.resize(rows);
+
+    // For each row, ensure it has 'cols' elements and copy the corresponding data.
+    for (unsigned int i = 0; i < rows; ++i)
+    {
+        // Resize the inner vector to 'cols'
+        data[i].resize(cols);
+
+        // Calculate the starting position for this row in the byte stream.
+        const char* rowStart = byteStream + i * cols * sizeof(T);
+
+        // Copy the row data into the inner vector.
+        std::memcpy(data[i].data(), rowStart, cols * sizeof(T));
+    }
+}
+template<>
+void Matrix<bool>::initFromByteStream(const char* byteStream, unsigned int byteSize)
+{
+    if (byteSize != rows * cols * sizeof(bool))
+    {
+        throw std::runtime_error("Invalid byte stream size for Matrix<bool>");
+    }
+
+    // Resize the outer vector to have 'rows' elements.
+    data.resize(rows);
+
+    // For each row, resize the inner vector to 'cols'
+    for (unsigned int i = 0; i < rows; ++i)
+    {
+        data[i].resize(cols);
+        for (unsigned int j = 0; j < cols; ++j)
+        {
+            // Assume each bool is stored as a full byte in the byte stream.
+            data[i][j] = (byteStream[i * cols + j] != 0);
+        }
+    }
+}
+template<>
+std::vector<char> Matrix<bool>::toByteStream() const
+{
+    // Here, we assume we want to store one byte per boolean.
+    std::vector<char> byteStream(rows * cols);
+    for (unsigned int i = 0; i < rows; ++i) {
+        for (unsigned int j = 0; j < cols; ++j) {
+            // Convert the bool value to a char (1 for true, 0 for false)
+            byteStream[i * cols + j] = data[i][j] ? 1 : 0;
+        }
+    }
+    return byteStream;
 }
 
 template<typename T>
 std::vector<char> Matrix<T>::toByteStream() const
 {
     std::vector<char> byteStream(rows * cols * sizeof(T));
-    std::memcpy(byteStream.data(), data.data(), byteStream.size());
+    // Iterate over each row and copy its data into the byte stream.
+    for (unsigned int i = 0; i < rows; ++i) {
+        std::memcpy(byteStream.data() + i * cols * sizeof(T),
+                    data[i].data(),
+                    cols * sizeof(T));
+    }
     return byteStream;
 }
 template<typename T>
