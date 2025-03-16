@@ -227,5 +227,68 @@ void testMatrix(void) {
     Matrix<int> copied(toCopy);
     std::cout<<"Matrix that has been copied \n" << copied.toString();
 
-    std::cout << "All tests completed successfully!" << std::endl;
+     // ============================
+    //  NEW: Test the Iterators
+    // ============================
+    std::cout << "\n--- Testing Iterators (non-const and const) ---\n";
+
+    // 1) Non-const Iterator (row-wise)
+    {
+        Matrix<int> m(3,3);
+        m.fill(0);
+
+        // We'll fill the matrix with consecutive values using row-major iteration
+        int value = 1;
+        for (auto it = m.begin(TraversalType::Row); it != m.end(TraversalType::Row); ++it)
+        {
+            auto [r, c, currentVal] = *it;
+            // We can modify the underlying matrix because it's non-const
+            m[r][c] = value++;
+        }
+
+        std::cout << "Matrix filled row-wise using non-const iterator:\n";
+        std::cout << m.toString() << std::endl;
+    }
+
+    // 2) Const Iterator (column-wise)
+    {
+        Matrix<int> m(3,3);
+        // Fill the matrix with something we can read back
+        // e.g., row i, col j => value = (i+1)*10 + (j+1) for clarity
+        for (unsigned int i = 0; i < m.numRows(); ++i)
+        {
+            for (unsigned int j = 0; j < m.numCols(); ++j)
+            {
+                m[i][j] = static_cast<int>((i + 1) * 10 + (j + 1));
+            }
+        }
+
+        // Now treat 'm' as a const reference
+        const Matrix<int>& cm = m;
+        std::cout << "Matrix for const iteration:\n" << cm.toString() << std::endl;
+
+        std::cout << "Reading elements column-wise via const iterator (debug):\n";
+for (auto cit = cm.begin(TraversalType::Column); cit != cm.end(TraversalType::Column); ++cit)
+{
+    // Extract row, col, and value
+    auto triple = *cit;
+    auto r = std::get<0>(triple);
+    auto c = std::get<1>(triple);
+    // 'valRef' is a const T& if your operator*() returns const T&
+    auto &valRef = std::get<2>(triple);
+
+    // Print row, col, the value, and the address
+    std::cout << " row=" << r
+              << " col=" << c
+              << " value=" << valRef
+              << " &value=" << static_cast<const void*>(&valRef)
+              << "\n";
 }
+std::cout << std::endl;
+
+        std::cout << std::endl;
+    }
+
+    std::cout << "\nAll tests completed successfully!\n" << std::endl;
+}
+

@@ -25,6 +25,32 @@ private:
     unsigned int cols;
 
 public:
+    class ConstIterator
+    {
+    private:
+        // Store a const reference
+        const Matrix<T>& matrix;
+        long row;
+        long col;
+        TraversalType type;
+
+    public:
+        // Constructor (declaration only here)
+        ConstIterator(const Matrix<T>& mat,
+                      long r,
+                      long c,
+                      TraversalType traversalType = TraversalType::Row);
+
+        // Pre-increment operator
+        ConstIterator& operator++();
+
+        // Comparison
+        bool operator==(const ConstIterator& other) const;
+        bool operator!=(const ConstIterator& other) const;
+
+        // Dereference
+        std::tuple<unsigned int, unsigned int, const T&> operator*() const;
+    };
     class Iterator
     {
     private:
@@ -70,6 +96,8 @@ public:
 
     Iterator begin(TraversalType type = TraversalType::Row);
     Iterator end(TraversalType type = TraversalType::Row);
+    ConstIterator begin(TraversalType type = TraversalType::Row) const;
+    ConstIterator end(TraversalType type = TraversalType::Row) const;
 
     std::string toString() const;
 
@@ -107,7 +135,7 @@ public:
 
 // Scalar operations
     template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value , Matrix<T>>::type
+    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
             operator+(const T& scalar) const;
 
     template<typename U = T>
