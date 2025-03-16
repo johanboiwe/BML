@@ -80,8 +80,6 @@ public:
 
     const std::vector<T>& operator[](unsigned int row) const;
 
-
-
     void initFromByteStream(const char* byteStream, unsigned int byteSize);
 
     std::vector<char> toByteStream() const;
@@ -157,7 +155,25 @@ public:
 
 
 };
+// Equality operators
+template<typename T>
+bool operator==(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
+template<typename T>
+bool operator!=(const Matrix<T>& lhs, const Matrix<T>& rhs);
+
+// Relational operators
+template<typename T>
+bool operator<(const Matrix<T>& lhs, const Matrix<T>& rhs);
+
+template<typename T>
+bool operator>(const Matrix<T>& lhs, const Matrix<T>& rhs);
+
+template<typename T>
+bool operator<=(const Matrix<T>& lhs, const Matrix<T>& rhs);
+
+template<typename T>
+bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs);
 extern void testMatrix(void);
 
 

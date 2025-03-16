@@ -289,6 +289,54 @@ std::cout << std::endl;
         std::cout << std::endl;
     }
 
+    // Comparison tests for Matrix<int>
+{
+    std::cout << "\n--- Testing Comparison Operators ---\n";
+
+    // Create three 2x2 matrices
+    Matrix<int> m1(2, 2);
+    Matrix<int> m2(2, 2);
+    Matrix<int> m3(2, 2);
+
+    // Fill m1 with:
+    // [ 1 2 ]
+    // [ 3 4 ]
+    m1[0][0] = 1; m1[0][1] = 2;
+    m1[1][0] = 3; m1[1][1] = 4;
+
+    // Fill m2 with the same values as m1
+    m2[0][0] = 1; m2[0][1] = 2;
+    m2[1][0] = 3; m2[1][1] = 4;
+
+    // Fill m3 with a slight difference:
+    // [ 1 2 ]
+    // [ 3 5 ]
+    m3[0][0] = 1; m3[0][1] = 2;
+    m3[1][0] = 3; m3[1][1] = 5;
+
+    // Test equality and inequality
+    std::cout << "m1 == m2: " << (m1 == m2 ? "true" : "false") << std::endl;
+    std::cout << "m1 == m3: " << (m1 == m3 ? "true" : "false") << std::endl;
+    std::cout << "m1 != m3: " << (m1 != m3 ? "true" : "false") << std::endl;
+
+    // Test less-than operator
+    std::cout << "m1 < m3: " << (m1 < m3 ? "true" : "false") << std::endl;
+    std::cout << "m3 < m1: " << (m3 < m1 ? "true" : "false") << std::endl;
+
+    // Test greater-than operator
+    std::cout << "m1 > m3: " << (m1 > m3 ? "true" : "false") << std::endl;
+    std::cout << "m3 > m1: " << (m3 > m1 ? "true" : "false") << std::endl;
+
+    // Test less-than or equal-to operator
+    std::cout << "m1 <= m2: " << (m1 <= m2 ? "true" : "false") << std::endl;
+    std::cout << "m1 <= m3: " << (m1 <= m3 ? "true" : "false") << std::endl;
+
+    // Test greater-than or equal-to operator
+    std::cout << "m1 >= m2: " << (m1 >= m2 ? "true" : "false") << std::endl;
+    std::cout << "m1 >= m3: " << (m1 >= m3 ? "true" : "false") << std::endl;
+}
+
+
     std::cout << "\nAll tests completed successfully!\n" << std::endl;
 }
 

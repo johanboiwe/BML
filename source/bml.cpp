@@ -5,9 +5,11 @@
 #include <sstream> // Required for stringstream
 #include <string>
 #include <type_traits>
-void printByteVector(const std::vector<char>& byteVector) {
+void printByteVector(const std::vector<char>& byteVector)
+{
     std::cout << "[DEBUG] byteVector contents: ";
-    for (size_t i = 0; i < byteVector.size(); ++i) {
+    for (size_t i = 0; i < byteVector.size(); ++i)
+    {
         // Cast the char to unsigned char and then to int to get the numeric value.
         std::cout << static_cast<int>(static_cast<unsigned char>(byteVector[i])) << " ";
     }
@@ -49,8 +51,8 @@ template<typename T>
 std::tuple<unsigned int, unsigned int, T> Matrix<T>::Iterator::operator*() const
 {
     if (row >= static_cast<long>(matrix.numRows()) ||
-        col >= static_cast<long>(matrix.numCols()) ||
-        row < 0 || col < 0)
+            col >= static_cast<long>(matrix.numCols()) ||
+            row < 0 || col < 0)
     {
         throw std::out_of_range("Iterator out of bounds");
     }
@@ -65,38 +67,38 @@ typename Matrix<T>::Iterator& Matrix<T>::Iterator::operator++()
 {
     switch (type)
     {
-        case TraversalType::Row:
+    case TraversalType::Row:
+    {
+        ++col;
+        if (col >= static_cast<long>(matrix.numCols()))
         {
+            col = 0;
+            ++row;
+        }
+        break;
+    }
+    case TraversalType::Column:
+    {
+        ++row;
+        if (row >= static_cast<long>(matrix.numRows()))
+        {
+            row = 0;
             ++col;
-            if (col >= static_cast<long>(matrix.numCols()))
-            {
-                col = 0;
-                ++row;
-            }
-            break;
         }
-        case TraversalType::Column:
-        {
-            ++row;
-            if (row >= static_cast<long>(matrix.numRows()))
-            {
-                row = 0;
-                ++col;
-            }
-            break;
-        }
-        case TraversalType::Diagonal:
-        {
-            ++row;
-            ++col;
-            break;
-        }
-        case TraversalType::AntiDiagonal:
-        {
-            ++row;
-            --col;
-            break;
-        }
+        break;
+    }
+    case TraversalType::Diagonal:
+    {
+        ++row;
+        ++col;
+        break;
+    }
+    case TraversalType::AntiDiagonal:
+    {
+        ++row;
+        --col;
+        break;
+    }
     }
     return *this;
 }
@@ -185,14 +187,14 @@ std::tuple<unsigned int, unsigned int, const T&>
 Matrix<T>::ConstIterator::operator*() const
 {
     // Optional debug prints
-  //  std::cerr << "DEBUG ConstIterator::operator*()"
+    //  std::cerr << "DEBUG ConstIterator::operator*()"
     //          << " row=" << row
-      //        << " col=" << col;
+    //        << " col=" << col;
 
     // Check if indices are in range
     if (row >= static_cast<long>(matrix.numRows()) ||
-        col >= static_cast<long>(matrix.numCols()) ||
-        row < 0 || col < 0)
+            col >= static_cast<long>(matrix.numCols()) ||
+            row < 0 || col < 0)
     {
         std::cerr << " -- OUT OF BOUNDS!\n";
         throw std::out_of_range("ConstIterator out of bounds");
@@ -200,16 +202,17 @@ Matrix<T>::ConstIterator::operator*() const
 
     // Print the address of the element in the underlying vector
     const T& ref = matrix[static_cast<unsigned int>(row)][static_cast<unsigned int>(col)];
- //   std::cerr << " value=" << ref
-   //           << " &value=" << static_cast<const void*>(&ref)
-     //         << std::endl;
+//   std::cerr << " value=" << ref
+    //           << " &value=" << static_cast<const void*>(&ref)
+    //         << std::endl;
 
     // Return the tuple with the reference
-    return {
-    static_cast<unsigned int>(row),
-    static_cast<unsigned int>(col),
-    ref
-};
+    return
+    {
+        static_cast<unsigned int>(row),
+        static_cast<unsigned int>(col),
+        ref
+    };
 
 }
 
@@ -220,38 +223,38 @@ typename Matrix<T>::ConstIterator& Matrix<T>::ConstIterator::operator++()
 {
     switch (type)
     {
-        case TraversalType::Row:
+    case TraversalType::Row:
+    {
+        ++col;
+        if (col >= static_cast<long>(matrix.numCols()))
         {
+            col = 0;
+            ++row;
+        }
+        break;
+    }
+    case TraversalType::Column:
+    {
+        ++row;
+        if (row >= static_cast<long>(matrix.numRows()))
+        {
+            row = 0;
             ++col;
-            if (col >= static_cast<long>(matrix.numCols()))
-            {
-                col = 0;
-                ++row;
-            }
-            break;
         }
-        case TraversalType::Column:
-        {
-            ++row;
-            if (row >= static_cast<long>(matrix.numRows()))
-            {
-                row = 0;
-                ++col;
-            }
-            break;
-        }
-        case TraversalType::Diagonal:
-        {
-            ++row;
-            ++col;
-            break;
-        }
-        case TraversalType::AntiDiagonal:
-        {
-            ++row;
-            --col;
-            break;
-        }
+        break;
+    }
+    case TraversalType::Diagonal:
+    {
+        ++row;
+        ++col;
+        break;
+    }
+    case TraversalType::AntiDiagonal:
+    {
+        ++row;
+        --col;
+        break;
+    }
     }
     //std::cout<< "this is: "<< this <<std::endl;
     return *this;
@@ -336,7 +339,7 @@ Matrix<T>::Matrix(const Matrix<T>& oldMatrix)
     //printByteVector(byteVector);
 
     // Debug print: byte stream size
-   // std::cout << "[DEBUG] Byte stream size: " << byteVector.size() << " bytes" <<"its data is" << std::endl;
+    // std::cout << "[DEBUG] Byte stream size: " << byteVector.size() << " bytes" <<"its data is" << std::endl;
 
 
     // Get a pointer to the underlying byte array
@@ -424,8 +427,10 @@ std::vector<char> Matrix<bool>::toByteStream() const
 {
     // Here, we assume we want to store one byte per boolean.
     std::vector<char> byteStream(rows * cols);
-    for (unsigned int i = 0; i < rows; ++i) {
-        for (unsigned int j = 0; j < cols; ++j) {
+    for (unsigned int i = 0; i < rows; ++i)
+    {
+        for (unsigned int j = 0; j < cols; ++j)
+        {
             // Convert the bool value to a char (1 for true, 0 for false)
             byteStream[i * cols + j] = data[i][j] ? 1 : 0;
         }
@@ -438,7 +443,8 @@ std::vector<char> Matrix<T>::toByteStream() const
 {
     std::vector<char> byteStream(rows * cols * sizeof(T));
     // Iterate over each row and copy its data into the byte stream.
-    for (unsigned int i = 0; i < rows; ++i) {
+    for (unsigned int i = 0; i < rows; ++i)
+    {
         std::memcpy(byteStream.data() + i * cols * sizeof(T),
                     data[i].data(),
                     cols * sizeof(T));
@@ -864,22 +870,99 @@ typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
 template<typename T>
 template<typename U>
 typename std::enable_if<std::is_integral<U>::value, Matrix<T>>::type
-Matrix<T>::operator%(const T& scalar) const {
-    if (scalar == 0) {
+        Matrix<T>::operator%(const T& scalar) const
+{
+    if (scalar == 0)
+    {
         throw std::runtime_error("Modulus by zero encountered.");
     }
 
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i) {
-        for (unsigned int j = 0; j < cols; ++j) {
+    for (unsigned int i = 0; i < rows; ++i)
+    {
+        for (unsigned int j = 0; j < cols; ++j)
+        {
             result[i][j] = data[i][j] % scalar;
         }
     }
     return result;
 }
+// Note: If you plan to use these operators with many types,
+// you'll need to explicitly instantiate them for each type,
+// or include this source file at the bottom of your header.
 
+// Equality operator: two matrices are equal if they have the same dimensions
+// and all corresponding elements are equal.
+template<typename T>
+bool operator==(const Matrix<T>& lhs, const Matrix<T>& rhs)
+{
+    if (lhs.numRows() != rhs.numRows() || lhs.numCols() != rhs.numCols())
+        return false;
+    for (unsigned int i = 0; i < lhs.numRows(); ++i)
+    {
+        for (unsigned int j = 0; j < lhs.numCols(); ++j)
+        {
+            if (lhs[i][j] != rhs[i][j])
+                return false;
+        }
+    }
+    return true;
+}
 
+// Inequality operator
+template<typename T>
+bool operator!=(const Matrix<T>& lhs, const Matrix<T>& rhs)
+{
+    return !(lhs == rhs);
+}
 
+// Less-than operator: define a lexicographical order
+template<typename T>
+bool operator<(const Matrix<T>& lhs, const Matrix<T>& rhs)
+{
+    if (lhs.numRows() != rhs.numRows())
+        return lhs.numRows() < rhs.numRows();
+    if (lhs.numCols() != rhs.numCols())
+        return lhs.numCols() < rhs.numCols();
+    for (unsigned int i = 0; i < lhs.numRows(); ++i)
+    {
+        for (unsigned int j = 0; j < lhs.numCols(); ++j)
+        {
+            if (lhs[i][j] != rhs[i][j])
+                return lhs[i][j] < rhs[i][j];
+        }
+    }
+    return false;  // They are equal.
+}
+
+// Greater-than operator
+template<typename T>
+bool operator>(const Matrix<T>& lhs, const Matrix<T>& rhs)
+{
+    return rhs < lhs;
+}
+
+// Less-than-or-equal-to operator
+template<typename T>
+bool operator<=(const Matrix<T>& lhs, const Matrix<T>& rhs)
+{
+    return !(rhs < lhs);
+}
+
+// Greater-than-or-equal-to operator
+template<typename T>
+bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs)
+{
+    return !(lhs < rhs);
+}
+
+#define INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(T)                          \
+    template bool operator==<T>(const Matrix<T>&, const Matrix<T>&);        \
+    template bool operator!=<T>(const Matrix<T>&, const Matrix<T>&);        \
+    template bool operator< <T>(const Matrix<T>&, const Matrix<T>&);         \
+    template bool operator> <T>(const Matrix<T>&, const Matrix<T>&);         \
+    template bool operator<=<T>(const Matrix<T>&, const Matrix<T>&);         \
+    template bool operator>=<T>(const Matrix<T>&, const Matrix<T>&);
 
 // Macro to instantiate the Matrix class and all operators except modulus for a specific type (T)
 #define INSTANTIATE_MATRIX_OPERATORS_NO_MODULUS_FOR_TYPE(T)             \
@@ -938,6 +1021,46 @@ INSTANTIATE_MATRIX_OPERATORS_FOR_INTEGRAL_TYPE(bool)
 template class Matrix<std::string>;
 template class Matrix<void*>;
 
+// Instantiate for integral types:
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(int)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(short)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(long)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(long long)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(unsigned int)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(unsigned short)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(unsigned long)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(unsigned long long)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(bool)
+
+// Instantiate for floating-point types:
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(float)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(double)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(long double)
+
+// Instantiate for character types:
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(char)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(unsigned char)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(signed char)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(wchar_t)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(char16_t)
+INSTANTIATE_MATRIX_COMPARISON_FOR_TYPE(char32_t)
+
+// Optionally, instantiate for std::string and void*
+// (Note: Arithmetic operations are not supported for these types,
+// but if you want to use comparison operators, you can instantiate them.)
+template bool operator==<std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
+template bool operator!=<std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
+template bool operator< <std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
+template bool operator> <std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
+template bool operator<=<std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
+template bool operator>=<std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
+
+template bool operator==<void*>(const Matrix<void*>&, const Matrix<void*>&);
+template bool operator!=<void*>(const Matrix<void*>&, const Matrix<void*>&);
+template bool operator< <void*>(const Matrix<void*>&, const Matrix<void*>&);
+template bool operator> <void*>(const Matrix<void*>&, const Matrix<void*>&);
+template bool operator<=<void*>(const Matrix<void*>&, const Matrix<void*>&);
+template bool operator>=<void*>(const Matrix<void*>&, const Matrix<void*>&);
 
 
 
