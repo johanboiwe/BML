@@ -50,7 +50,7 @@ public:
 
     const std::vector<T>& operator[](unsigned int row) const;
 
-    void initFromByteStream(const char* byteStream, unsigned int byteSize);
+    void initFromByteStream(const char* byteStream, size_t byteSize);
 
     std::vector<char> toByteStream() const;
 
