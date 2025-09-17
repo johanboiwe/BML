@@ -7,14 +7,27 @@
 #include <cstring>
 #include <functional>
 #include <type_traits>
+#include "iterator.hpp"
 
-enum class TraversalType
-{
-    Row,          // Traverse row by row
-    Column,       // Traverse column by column
-    Diagonal,     // Traverse diagonally
-    AntiDiagonal  // Traverse anti-diagonally
-};
+// ---- helper traits to refine which Ts allow maths ----
+
+// Arithmetic allowed for all arithmetic types EXCEPT plain char and bool.
+// (signed char / unsigned char remain allowed; floats allowed; bool/char blocked)
+template<typename X>
+struct bml_is_math_arithmetic
+    : std::bool_constant<
+        std::is_arithmetic<X>::value &&
+        !std::is_same<typename std::remove_cv<X>::type, char>::value &&
+        !std::is_same<typename std::remove_cv<X>::type, bool>::value> {};
+
+// Modulus allowed for integral types EXCEPT plain char and bool.
+// (signed char / unsigned char remain allowed)
+template<typename X>
+struct bml_is_math_integral
+    : std::bool_constant<
+        std::is_integral<X>::value &&
+        !std::is_same<typename std::remove_cv<X>::type, char>::value &&
+        !std::is_same<typename std::remove_cv<X>::type, bool>::value> {};
 
 template<typename T>
 class Matrix
@@ -25,49 +38,6 @@ private:
     unsigned int cols;
 
 public:
-    class ConstIterator
-    {
-    private:
-        // Store a const reference
-        const Matrix<T>& matrix;
-        long row;
-        long col;
-        TraversalType type;
-
-    public:
-        // Constructor (declaration only here)
-        ConstIterator(const Matrix<T>& mat,
-                      long r,
-                      long c,
-                      TraversalType traversalType = TraversalType::Row);
-
-        // Pre-increment operator
-        ConstIterator& operator++();
-
-        // Comparison
-        bool operator==(const ConstIterator& other) const;
-        bool operator!=(const ConstIterator& other) const;
-
-        // Dereference
-        std::tuple<unsigned int, unsigned int, const T&> operator*() const;
-    };
-    class Iterator
-    {
-    private:
-        Matrix<T>& matrix;
-        long row;
-        long col;
-        TraversalType type;  // Add traversal type
-
-    public:
-        Iterator(Matrix<T>& mat, signed long r, signed long c, TraversalType traversalType = TraversalType::Row);
-
-        Iterator& operator++();
-        bool operator==(const Iterator& other) const;
-        bool operator!=(const Iterator& other) const;
-        std::tuple<unsigned int, unsigned int, T> operator*() const;
-    };
-
     Matrix(unsigned int numRows, unsigned int numCols);
 
     Matrix(const Matrix<T>& oldMatrix);
@@ -92,10 +62,10 @@ public:
 
     Matrix<T> where(std::function<bool(T)> condition, T trueValue, T falseValue) const;
 
-    Iterator begin(TraversalType type = TraversalType::Row);
-    Iterator end(TraversalType type = TraversalType::Row);
-    ConstIterator begin(TraversalType type = TraversalType::Row) const;
-    ConstIterator end(TraversalType type = TraversalType::Row) const;
+    Iterator<T> begin(TraversalType type = TraversalType::Row);
+    Iterator<T> end(TraversalType type = TraversalType::Row);
+    ConstIterator<T> begin(TraversalType type = TraversalType::Row) const;
+    ConstIterator<T> end(TraversalType type = TraversalType::Row) const;
 
     std::string toString() const;
 
@@ -109,72 +79,71 @@ public:
 
     void fill(const T& value);
 
-// Operator functions
+    // ---- Matrix-matrix arithmetic (char/bool excluded; signed/unsigned char allowed) ----
     template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator+(const Matrix<T>& other) const;
-
-    template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator-(const Matrix<T>& other) const;
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator+(const Matrix<T>& other) const;
 
     template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator*(const Matrix<T>& other) const;
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator-(const Matrix<T>& other) const;
 
     template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator/(const Matrix<T>& other) const;
-
-// Modulus operator only for integral types
-    template<typename U = T>
-    typename std::enable_if<std::is_integral<U>::value, Matrix<T>>::type
-            operator%(const Matrix<T>& other) const;
-
-// Scalar operations
-    template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator+(const T& scalar) const;
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator*(const Matrix<T>& other) const;
 
     template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator-(const T& scalar) const;
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator/(const Matrix<T>& other) const;
+
+    // ---- Modulus only for "real" integrals (plain char/bool excluded) ----
+    template<typename U = T>
+    typename std::enable_if<bml_is_math_integral<U>::value, Matrix<T>>::type
+    operator%(const Matrix<T>& other) const;
+
+    // ---- Scalar arithmetic (char/bool excluded; signed/unsigned char allowed) ----
+    template<typename U = T>
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator+(const T& scalar) const;
 
     template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator*(const T& scalar) const;
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator-(const T& scalar) const;
 
     template<typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, Matrix<T>>::type
-            operator/(const T& scalar) const;
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator*(const T& scalar) const;
 
-// Modulus operator only for integral types
     template<typename U = T>
-    typename std::enable_if<std::is_integral<U>::value, Matrix<T>>::type
-            operator%(const T& scalar) const;
+    typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
+    operator/(const T& scalar) const;
 
-
+    // ---- Scalar modulus only for "real" integrals (plain char/bool excluded) ----
+    template<typename U = T>
+    typename std::enable_if<bml_is_math_integral<U>::value, Matrix<T>>::type
+    operator%(const T& scalar) const;
 };
-// Equality operators
+
+// Equality operators (available for all T)
 template<typename T>
 bool operator==(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
 template<typename T>
 bool operator!=(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-// Relational operators
-template<typename T>
+// Relational operators: DISABLED for pointer T (e.g., void*, const void*)
+template<typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
 bool operator<(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-template<typename T>
+template<typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
 bool operator>(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-template<typename T>
+template<typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
 bool operator<=(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-template<typename T>
+template<typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
 bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs);
-extern void testMatrix(void);
 
+extern void testMatrix(void);
 
 #endif // BML_HPP_INCLUDED
