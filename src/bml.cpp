@@ -141,7 +141,7 @@ const std::vector<T>& Matrix<T>::operator[](unsigned int row) const
 }
 
 template<typename T>
-void Matrix<T>::initFromByteStream(const char* byteStream, unsigned int byteSize)
+void Matrix<T>::initFromByteStream(const char* byteStream, size_t byteSize)
 {
     if (byteSize != rows * cols * sizeof(T))
         throw std::runtime_error("Invalid byte stream size");
@@ -157,7 +157,7 @@ void Matrix<T>::initFromByteStream(const char* byteStream, unsigned int byteSize
 
 // Matrix<bool> specialisation for byte stream I/O
 template<>
-void Matrix<bool>::initFromByteStream(const char* byteStream, unsigned int byteSize)
+void Matrix<bool>::initFromByteStream(const char* byteStream, size_t byteSize)
 {
     if (byteSize != rows * cols * sizeof(bool))
         throw std::runtime_error("Invalid byte stream size for Matrix<bool>");
@@ -195,24 +195,51 @@ std::vector<char> Matrix<T>::toByteStream() const
 }
 
 template<>
-void Matrix<std::string>::initFromByteStream(const char* byteStream, unsigned int byteSize)
+void Matrix<std::string>::initFromByteStream(const char* byteStream, size_t byteSize)
 {
     //finding the stat locations in the stream
     std::vector<size_t> startLocations;
-    for(size_t i = 0; i++; i<byteSize)
+    startLocations.push_back(0);
+    for (size_t i = 0; i < byteSize; ++i)
     {
-        if(byteStream[i] == 0) startLocations.push_back(i)
-        }
+        if(byteStream[i] == 0) startLocations.push_back(i+1);
+    }
     //check if the amount of strings is right
-    if(startLocations.size() != rows * cols)throw std::runtime_error("Invalid byte stream size for Matrix<std::string>");
+    if((startLocations.size()-1) != rows * cols)throw std::runtime_error("Invalid byte stream size for Matrix<std::string>");
+    if(startLocations[startLocations.size()-1]-0 != byteSize)throw std::runtime_error("Invalid byte stream format for Matrix<std::string>, does not end with a null");
 
     // setting the matrixstrings
+    size_t couter = 0;
+    for (const auto& [row, col, _ ] : *this)
+    {
+        char* currentCStr = new char [startLocations[couter+1] - startLocations[couter]];
+        std::memcpy(currentCStr, byteStream + startLocations[couter], startLocations[couter+1] - startLocations[couter]);
+        (*this)[row][col] = std::string(currentCStr);
+        delete[] currentCStr;
+        couter++;
+    }
 
 }
 
 template<>
 std::vector<char> Matrix<std::string>::toByteStream() const
 {
+    std::vector<char> result;
+
+    // (Optional) pre-reserve if you want fewer reallocations:
+    // size_t total = 0;
+    // for (const auto& [r, c, cell] : *this) total += cell.size() + 1;
+    // result.reserve(total);
+
+    for (const auto& [_, __, cell] : *this)
+    {
+        // append the string bytes
+        result.insert(result.end(), cell.begin(), cell.end());
+        // append NUL terminator so the parser can find the end
+        result.push_back('\0');
+    }
+
+    return result;
 }
 template<typename T>
 Matrix<T> Matrix<T>::copy(const unsigned int startRow,
