@@ -84,55 +84,7 @@ Iterator<T>& Iterator<T>::operator++()
     }
     return *this;
 }
-/*
-// Non-const begin()
-template<typename T>
-Iterator<T> Matrix<T>::begin(TraversalType t)
-{
-    switch (t)
-    {
-    case TraversalType::Row:
-        return Iterator(*this, 0, 0, TraversalType::Row);
-    case TraversalType::Column:
-        return Iterator(*this, 0, 0, TraversalType::Column);
-    case TraversalType::Diagonal:
-        return Iterator(*this, 0, 0, TraversalType::Diagonal);
-    case TraversalType::AntiDiagonal:
-        return Iterator(*this, 0, static_cast<long>(numCols()) - 1, TraversalType::AntiDiagonal);
-    default:
-        return Iterator(*this, 0, 0, TraversalType::Row);
-    }
-}
 
-// Non-const end()
-template<typename T>
-Iterator<T> Matrix<T>::end(TraversalType t)
-{
-    switch (t)
-    {
-    case TraversalType::Row:
-        // "One past" the last element in row-major
-        return Iterator(*this, static_cast<long>(numRows()), 0, TraversalType::Row);
-    case TraversalType::Column:
-        // "One past" in column traversal
-        return Iterator(*this, 0, static_cast<long>(numCols()), TraversalType::Column);
-    case TraversalType::Diagonal:
-        // "One past" in diagonal (min(rows, cols), min(rows, cols))
-        return Iterator(*this,
-                        static_cast<long>(std::min(numRows(), numCols())),
-                        static_cast<long>(std::min(numRows(), numCols())),
-                        TraversalType::Diagonal);
-    case TraversalType::AntiDiagonal:
-        // "One past" anti-diagonal
-        return Iterator(*this,
-                        static_cast<long>(std::min(numRows(), numCols())),
-                        -1L,
-                        TraversalType::AntiDiagonal);
-    default:
-        return Iterator(*this, static_cast<long>(numRows()), 0, TraversalType::Row);
-    }
-}
-*/
 //=========================================================
 // 2. ConstIterator Implementation
 //    (Mirrors the non-const, but references const Matrix)
@@ -241,57 +193,3 @@ ConstIterator<T>& ConstIterator<T>::operator++()
     //std::cout<< "this is: "<< this <<std::endl;
     return *this;
 }
-/*
-// Const begin()
-template<typename T>
-ConstIterator<T> Matrix<T>::begin(TraversalType t) const
-{
-    switch (t)
-    {
-    case TraversalType::Row:
-        return ConstIterator(*this, 0, 0, TraversalType::Row);
-    case TraversalType::Column:
-        return ConstIterator(*this, 0, 0, TraversalType::Column);
-    case TraversalType::Diagonal:
-        return ConstIterator(*this, 0, 0, TraversalType::Diagonal);
-    case TraversalType::AntiDiagonal:
-        return ConstIterator(*this, 0, static_cast<long>(numCols()) - 1, TraversalType::AntiDiagonal);
-    default:
-        return ConstIterator(*this, 0, 0, TraversalType::Row);
-    }
-}
-
-// Const end()
-template<typename T>
-ConstIterator<T> Matrix<T>::end(TraversalType t) const
-{
-    switch (t)
-    {
-    case TraversalType::Row:
-        return ConstIterator(*this,
-                             static_cast<long>(numRows()),
-                             0,
-                             TraversalType::Row);
-    case TraversalType::Column:
-        return ConstIterator(*this,
-                             0,
-                             static_cast<long>(numCols()),
-                             TraversalType::Column);
-    case TraversalType::Diagonal:
-        return ConstIterator(*this,
-                             static_cast<long>(std::min(numRows(), numCols())),
-                             static_cast<long>(std::min(numRows(), numCols())),
-                             TraversalType::Diagonal);
-    case TraversalType::AntiDiagonal:
-        return ConstIterator(*this,
-                             static_cast<long>(std::min(numRows(), numCols())),
-                             -1L,
-                             TraversalType::AntiDiagonal);
-    default:
-        return ConstIterator(*this,
-                             static_cast<long>(numRows()),
-                             0,
-                             TraversalType::Row);
-    }
-}
-*/
