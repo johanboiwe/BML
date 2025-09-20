@@ -66,6 +66,7 @@ BML_INTEGRAL_MATH_TYPES
 BML_FLOAT_TYPES
 BML_CHARLIKE_TYPES
 BML_SPECIAL_TYPES
+// no instant for bool
 #undef X
 
 // -----------------------------------

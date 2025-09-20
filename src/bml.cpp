@@ -639,5 +639,157 @@ bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs)
     return !(lhs < rhs);
 }
 
+// -------------------- Reductions --------------------
+
+template<typename T>
+template<typename U>
+std::enable_if_t<std::is_floating_point<U>::value, T>
+Matrix<T>::sum() const
+{
+    if (data.empty()) return T{0}; // policy: 0 for empty
+
+    T s = T{0};
+    T c = T{0};
+
+    for (const store_t& cell : data)
+    {
+        T y = static_cast<T>(cell) - c;
+        T t = s + y;
+        c = (t - s) - y;
+        s = t;
+    }
+    return s;
+}
+
+// ---------- sum() for non-floating arithmetic ----------
+template<typename T>
+template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value && !std::is_floating_point<U>::value, T>
+Matrix<T>::sum() const
+{
+    if (data.empty()) return T{0}; // policy: 0 for empty
+
+
+    T sumValue = T{0};
+    for (const store_t& cell : data)
+    {
+        sumValue += static_cast<T>(cell);
+    }
+    return sumValue;
+
+}
+
+template<typename T>
+template<typename U>
+typename std::enable_if<!std::is_pointer<U>::value, T>::type
+Matrix<T>::min() const
+{
+    T minimalValue = data[0];
+    for(auto& cell: data)
+    {
+        if (cell < minimalValue) minimalValue = cell;
+    }
+    return minimalValue;
+}
+
+template<typename T>
+template<typename U>
+typename std::enable_if<!std::is_pointer<U>::value, T>::type
+Matrix<T>::max() const
+{
+    T maxValue = data[0];
+    for(auto& cell: data)
+    {
+        if (cell > maxValue) maxValue = cell;
+    }
+    return maxValue;
+}
+
+template<typename T>
+bool Matrix<T>::any_of(std::function<bool(T)> p) const
+{
+    for (const store_t& cell : data)
+    {
+        if (p(static_cast<T>(cell))) return true;
+    }
+    return false;
+}
+
+template<typename T>
+bool Matrix<T>::none_of(std::function<bool(T)> p) const
+{
+    for (const store_t& cell : data)
+    {
+        if (p(static_cast<T>(cell))) return false;
+    }
+    return true;
+}
+template<typename T>
+size_t Matrix<T>::size() const noexcept
+{
+    // element count, not bytes
+    return static_cast<size_t>(rows) * static_cast<size_t>(cols);
+}
+
+template<typename T>
+bool Matrix<T>::empty() const noexcept
+{
+    // true for 0x0, Rx0, or 0xC
+    return rows == 0u || cols == 0u;
+}
+
+// ---------- argmin / argmax ----------
+
+template<typename T>
+template<typename U>
+std::enable_if_t<!std::is_pointer<U>::value,
+    std::pair<unsigned int, unsigned int>>
+Matrix<T>::argmin() const
+{
+    if (data.empty())
+        throw std::runtime_error("Matrix::argmin() on empty matrix");
+
+    T minimalValue = static_cast<T>(data[0]);
+    std::size_t minimalIndex = 0;
+    std::size_t enumeration  = 0;
+
+    for (const store_t& cell : data)
+    {
+        const T value = static_cast<T>(cell);
+        if (value < minimalValue)
+        {
+            minimalValue = value;
+            minimalIndex = enumeration;
+        }
+        enumeration++;
+    }
+    return toCoords(minimalIndex);
+}
+
+template<typename T>
+template<typename U>
+std::enable_if_t<!std::is_pointer<U>::value,
+    std::pair<unsigned int, unsigned int>>
+Matrix<T>::argmax() const
+{
+    if (data.empty())
+        throw std::runtime_error("Matrix::argmax() on empty matrix");
+
+    T maxValue = static_cast<T>(data[0]);
+    std::size_t maxIndex    = 0;
+    std::size_t enumeration = 0;
+
+    for (const store_t& cell : data)
+    {
+        const T value = static_cast<T>(cell);
+        if (value > maxValue)
+        {
+            maxValue = value;
+            maxIndex = enumeration;
+        }
+        enumeration++;
+    }
+    return toCoords(maxIndex);
+}
 
 

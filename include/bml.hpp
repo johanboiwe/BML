@@ -11,8 +11,14 @@
 #include "iterator.hpp"
 #include "rowView.hpp"
 
-template<class U> struct storage_of      { using type = U; };
-template<>        struct storage_of<bool>{ using type = std::uint8_t; };
+template<class U> struct storage_of
+{
+    using type = U;
+};
+template<>        struct storage_of<bool>
+{
+    using type = std::uint8_t;
+};
 template<class U> using storage_of_t = typename storage_of<U>::type;
 
 // ---- helper traits to refine which Ts allow maths ----
@@ -59,6 +65,10 @@ public:
 
     unsigned int numCols() const;
 
+    size_t size() const noexcept;
+    bool empty() const noexcept;
+    bool any_of(std::function<bool(T)> p) const;
+    bool none_of(std::function<bool(T)> p) const;
 
 
     RowView<T> operator[](unsigned int row);
@@ -92,6 +102,36 @@ public:
     std::vector<T> getAntiDiagonal(int start = 0, int end = -1) const;
 
     void fill(const T& value);
+
+    // --- Reductions (SFINAE-gated) ---
+// sum() – floating point (Kahan)
+    template<typename U = T>
+    std::enable_if_t<std::is_floating_point<U>::value, T>
+    sum() const;
+
+// sum() – non-floating arithmetic (ints, signed/unsigned char)
+    template<typename U = T>
+    std::enable_if_t<bml_is_math_arithmetic<U>::value && !std::is_floating_point<U>::value, T>
+    sum() const;                       // Kahan for floats
+
+    template<typename U = T>
+    typename std::enable_if<!std::is_pointer<U>::value, T>::type
+    min() const;                        // throws on empty
+
+    template<typename U = T>
+    typename std::enable_if<!std::is_pointer<U>::value, T>::type
+    max() const;
+
+    // Indices of min/max element (row, col). Throws on empty.
+    template<typename U = T>
+    std::enable_if_t<!std::is_pointer<U>::value,
+        std::pair<unsigned int, unsigned int>>
+        argmin() const;
+
+    template<typename U = T>
+    std::enable_if_t<!std::is_pointer<U>::value,
+        std::pair<unsigned int, unsigned int>>
+        argmax() const;
 
 
     // ---- Matrix-matrix arithmetic (char/bool excluded; signed/unsigned char allowed) ----
@@ -158,6 +198,7 @@ bool operator<=(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
 template<typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
 bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs);
+
 
 extern void testMatrix(void);
 
