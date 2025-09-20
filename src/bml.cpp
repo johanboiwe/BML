@@ -8,6 +8,22 @@
 #include <algorithm> // std::min, std::fill
 #include <cstring>   // std::memcpy
 
+template<typename T>
+inline std::size_t Matrix<T>::toIdx(unsigned int r, unsigned int c) const noexcept
+{
+    return static_cast<std::size_t>(r) * cols + c;
+}
+
+template<typename T>
+std::pair<unsigned int, unsigned int> Matrix<T>::toCoords(std::size_t i) const
+{
+    const std::size_t n = static_cast<std::size_t>(rows) * cols;
+    if (cols == 0) throw std::out_of_range("Matrix::toCoords: zero columns");
+    if (i >= n)   throw std::out_of_range("Matrix::toCoords: index out of range");
+    return { static_cast<unsigned int>(i / cols),
+             static_cast<unsigned int>(i % cols) };
+}
+
 // ======================= Iterators =======================
 
 // Non-const begin()
@@ -101,9 +117,7 @@ template<typename T>
 Matrix<T>::Matrix(unsigned int numRows, unsigned int numCols)
     : rows(numRows), cols(numCols)
 {
-    data.resize(numRows);
-    for (unsigned int i = 0; i < numRows; ++i)
-        data[i].resize(numCols);
+    data.resize(numRows* numCols);
 }
 
 template<typename T>
@@ -129,15 +143,15 @@ unsigned int Matrix<T>::numCols() const
 }
 
 template<typename T>
-std::vector<T>& Matrix<T>::operator[](unsigned int row)
+RowView<T> Matrix<T>::operator[](unsigned int row)
 {
-    return data[row];
+    return RowView<T>(data.data()+ toIdx(row, 0), cols);
 }
 
 template<typename T>
-const std::vector<T>& Matrix<T>::operator[](unsigned int row) const
+RowView<const T> Matrix<T>::operator[](unsigned int row) const
 {
-    return data[row];
+    return RowView<const T>(data.data()+ toIdx(row, 0), cols);
 }
 
 template<typename T>
@@ -146,51 +160,18 @@ void Matrix<T>::initFromByteStream(const char* byteStream, size_t byteSize)
     if (byteSize != rows * cols * sizeof(T))
         throw std::runtime_error("Invalid byte stream size");
 
-    data.resize(rows);
-    for (unsigned int i = 0; i < rows; ++i)
-    {
-        data[i].resize(cols);
-        const char* rowStart = byteStream + i * cols * sizeof(T);
-        std::memcpy(data[i].data(), rowStart, cols * sizeof(T));
-    }
+    std::memcpy(data.data(), byteStream, byteSize);
 }
 
-// Matrix<bool> specialisation for byte stream I/O
-template<>
-void Matrix<bool>::initFromByteStream(const char* byteStream, size_t byteSize)
-{
-    if (byteSize != rows * cols * sizeof(bool))
-        throw std::runtime_error("Invalid byte stream size for Matrix<bool>");
 
-    data.resize(rows);
-    for (unsigned int i = 0; i < rows; ++i)
-    {
-        data[i].resize(cols);
-        for (unsigned int j = 0; j < cols; ++j)
-            data[i][j] = (byteStream[i * cols + j] != 0);
-    }
-}
-
-template<>
-std::vector<char> Matrix<bool>::toByteStream() const
-{
-    std::vector<char> byteStream(rows * cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            byteStream[i * cols + j] = data[i][j] ? 1 : 0;
-    return byteStream;
-}
 
 template<typename T>
 std::vector<char> Matrix<T>::toByteStream() const
 {
     std::vector<char> byteStream(rows * cols * sizeof(T));
-    for (unsigned int i = 0; i < rows; ++i)
-    {
-        std::memcpy(byteStream.data() + i * cols * sizeof(T),
-                    data[i].data(),
-                    cols * sizeof(T));
-    }
+
+    std::memcpy(byteStream.data(), data.data(), data.size());
+
     return byteStream;
 }
 
@@ -282,9 +263,8 @@ void Matrix<T>::paste(const Matrix& source, const unsigned int destRow, const un
 template<typename T>
 bool Matrix<T>::all(std::function<bool(T)> condition) const
 {
-    for (const auto& row : data)
-        for (const auto& element : row)
-            if (!condition(element)) return false;
+    for (const auto& element : data)
+        if (!condition(element)) return false;
     return true;
 }
 
@@ -301,87 +281,133 @@ Matrix<T> Matrix<T>::where(std::function<bool(T)> condition, T trueValue, T fals
 template<typename T>
 std::string Matrix<T>::toString() const
 {
+// TODO (johan#1#): work with this when loops are made clear
+
     std::stringstream ss;
-    for (const auto& row : data)
-    {
-        for (const auto& element : row)
-            ss << element << ' ';
-        ss << "\n";
-    }
     return ss.str();
 }
 
 template<typename T>
 std::vector<T> Matrix<T>::getRow(unsigned int row, int startCol, int endCol) const
 {
-    if (row < 0 || row >= rows)
+    if (row >= rows)
         throw std::out_of_range("Invalid row index");
 
     if (endCol == -1) endCol = static_cast<int>(cols);
 
-    if (startCol < 0 || endCol > static_cast<int>(cols) || startCol >= endCol)
+    if (startCol < 0 || endCol < 0)
+        throw std::out_of_range("Negative column index");
+
+    const unsigned int s = static_cast<unsigned int>(startCol);
+    const unsigned int e = static_cast<unsigned int>(endCol);
+
+    if (s > e || e > static_cast<unsigned int>(cols))
         throw std::out_of_range("Invalid column slice indices");
 
-    return std::vector<T>(data[row].begin() + startCol, data[row].begin() + endCol);
+    return std::vector<T>(
+               data.data() + toIdx(row, s),
+               data.data() + toIdx(row, e)
+           );
 }
+
+
 
 template<typename T>
 std::vector<T> Matrix<T>::getColumn(unsigned int col, int startRow, int endRow) const
 {
-    if (col < 0 || col >= cols)
+    if (col >= cols)
         throw std::out_of_range("Invalid column index");
 
     if (endRow == -1) endRow = static_cast<int>(rows);
 
-    if (startRow < 0 || static_cast<unsigned int>(endRow) > rows || startRow >= endRow)
+    if (startRow < 0 || endRow < 0)
+        throw std::out_of_range("Negative row index");
+
+    const unsigned int s = static_cast<unsigned int>(startRow);
+    const unsigned int e = static_cast<unsigned int>(endRow);
+
+    if (s > e || e > static_cast<unsigned int>(rows))
         throw std::out_of_range("Invalid row slice indices");
 
     std::vector<T> result;
-    result.reserve(static_cast<size_t>(std::abs(endRow - startRow)));
+    result.reserve(static_cast<size_t>(e - s));
 
-    for (int i = startRow; i < endRow; ++i)
-        result.push_back(data[static_cast<size_t>(i)][static_cast<size_t>(col)]);
+    for (unsigned int i = s; i < e; ++i)
+        result.push_back(data[toIdx(i, col)]);
 
     return result;
 }
+
 
 template<typename T>
 std::vector<T> Matrix<T>::getDiagonal(int start, int end) const
 {
     if (start < 0) start = 0;
-    if (end == -1) end = static_cast<int>(std::min(rows, cols));
+    const unsigned int limit = std::min(rows, cols);
+    if (end == -1) end = static_cast<int>(limit);
+    if (end < 0) throw std::out_of_range("Negative end index");
 
-    if (start >= end || static_cast<unsigned int>(start) >= rows || static_cast<unsigned int>(start) >= cols)
+    const unsigned int s = static_cast<unsigned int>(start);
+    const unsigned int e = static_cast<unsigned int>(end);
+
+    if (s > e || e > limit)
         throw std::out_of_range("Invalid diagonal indices");
 
     std::vector<T> result;
-    result.reserve(static_cast<size_t>(std::abs(end - start)));
-    for (int i = start; i < end; ++i)
-        result.push_back(data[static_cast<size_t>(i)][static_cast<size_t>(i)]);
+    result.reserve(static_cast<size_t>(e - s));
+
+    for (unsigned int i = s; i < e; ++i)
+        result.push_back(data[toIdx(i, i)]);
+
     return result;
 }
+
 
 template<typename T>
 std::vector<T> Matrix<T>::getAntiDiagonal(int start, int end) const
 {
     if (start < 0) start = 0;
-    if (end == -1) end = static_cast<int>(std::min(rows, cols));
 
-    if (start >= end || static_cast<unsigned int>(start) >= rows || static_cast<unsigned int>(start) >= cols)
+    const unsigned int limit = std::min(rows, cols);
+    if (end == -1) end = static_cast<int>(limit);
+    if (end < 0) throw std::out_of_range("Negative end index");
+
+    const unsigned int s = static_cast<unsigned int>(start);
+    const unsigned int e = static_cast<unsigned int>(end);
+
+    if (s > e || e > limit)
         throw std::out_of_range("Invalid anti-diagonal indices");
 
+    // Empty matrix or zero-width => empty result
+    if (cols == 0 || rows == 0 || s == e)
+        return {};
+
     std::vector<T> result;
-    result.reserve(static_cast<size_t>(std::abs(end - start)));
-    for (int i = start; i < end; ++i)
-        result.push_back(data[static_cast<size_t>(i)][static_cast<unsigned int>(cols) - static_cast<unsigned int>(i) - 1]);
+    result.reserve(static_cast<size_t>(e - s));
+
+    for (unsigned int i = s; i < e; ++i)
+    {
+        const unsigned int j = static_cast<unsigned int>(cols) - 1u - i;
+        result.push_back(data[toIdx(i, j)]);
+    }
+
     return result;
 }
+
 
 template<typename T>
 void Matrix<T>::fill(const T& value)
 {
-    for (auto& row : data)
-        std::fill(row.begin(), row.end(), value);
+
+    for (T& cell : data)
+        cell = value;
+}
+template<>
+void Matrix<bool>::fill(const bool& value)
+{
+
+    for (uint8_t& cell : data)
+        cell = value;
 }
 
 // ======================= Arithmetic (with refined SFINAE) =======================
@@ -396,9 +422,10 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
         throw std::invalid_argument("Matrix dimensions must match for addition.");
 
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] + other.data[i][j];
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] + other.data.data()[i];
+    }
     return result;
 }
 
@@ -411,10 +438,13 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
     if (rows != other.rows || cols != other.cols)
         throw std::invalid_argument("Matrix dimensions must match for subtraction.");
 
+
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] - other.data[i][j];
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] - other.data.data()[i];
+    }
+    return result;
     return result;
 }
 
@@ -427,10 +457,13 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
     if (rows != other.rows || cols != other.cols)
         throw std::invalid_argument("Matrix dimensions must match for multiplication.");
 
+
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] * other.data[i][j];
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] * other.data.data()[i];
+    }
+    return result;
     return result;
 }
 
@@ -443,14 +476,15 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
     if (rows != other.rows || cols != other.cols)
         throw std::invalid_argument("Matrix dimensions must match for division.");
 
+
+
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-        {
-            if (other.data[i][j] == 0)
-                throw std::runtime_error("Division by zero encountered.");
-            result[i][j] = data[i][j] / other.data[i][j];
-        }
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        if (other.data.data()[i] == 0)
+            throw std::runtime_error("Division by zero encountered.");
+        result.data.data()[i] = data.data()[i] / other.data.data()[i];
+    }
     return result;
 }
 
@@ -464,13 +498,12 @@ typename std::enable_if<bml_is_math_integral<U>::value, Matrix<T>>::type
         throw std::invalid_argument("Matrix dimensions must match for modulus.");
 
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-        {
-            if (other.data[i][j] == 0)
-                throw std::runtime_error("Modulus by zero encountered.");
-            result[i][j] = data[i][j] % other.data[i][j];
-        }
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        if (other.data[i] == 0) throw std::runtime_error("Modulus by zero encountered.");
+        result.data.data()[i] = data.data()[i] % other.data.data()[i];
+    }
+
     return result;
 }
 
@@ -481,9 +514,10 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
         Matrix<T>::operator+(const T& scalar) const
 {
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] + scalar;
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] + scalar;
+    }
     return result;
 }
 
@@ -494,9 +528,10 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
         Matrix<T>::operator-(const T& scalar) const
 {
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] - scalar;
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] - scalar;
+    }
     return result;
 }
 
@@ -506,10 +541,12 @@ template<typename U>
 typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
         Matrix<T>::operator*(const T& scalar) const
 {
+
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] * scalar;
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] * scalar;
+    }
     return result;
 }
 
@@ -523,9 +560,11 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
         throw std::runtime_error("Division by zero encountered.");
 
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] / scalar;
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] / scalar;
+    }
+    return result;
     return result;
 }
 
@@ -539,9 +578,10 @@ typename std::enable_if<bml_is_math_integral<U>::value, Matrix<T>>::type
         throw std::runtime_error("Modulus by zero encountered.");
 
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
-            result[i][j] = data[i][j] % scalar;
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data.data()[i] = data.data()[i] % scalar;
+    }
     return result;
 }
 

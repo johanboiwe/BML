@@ -5,12 +5,13 @@
 // Public headers (decls)
 #include "bml.hpp"
 #include "iterator.hpp"
-
+#include "rowView.hpp"
 // Pull in the template *definitions*.
 // NOTE: Because we include these .cpp files here, you must NOT compile them
 // separately in your build; otherwise you'll get duplicate symbols.
 #include "bml.cpp"
 #include "iterator.cpp"
+#include "rowView.cpp"
 
 // -------------------------------
 // Local dtype lists (keep in sync)
@@ -57,6 +58,13 @@ BML_INTEGRAL_MATH_TYPES
 BML_FLOAT_TYPES
 BML_CHARLIKE_TYPES
 BML_BOOL_TYPES
+BML_SPECIAL_TYPES
+#undef X
+
+#define X(T) template class RowView<T>; template class RowView<const T>;
+BML_INTEGRAL_MATH_TYPES
+BML_FLOAT_TYPES
+BML_CHARLIKE_TYPES
 BML_SPECIAL_TYPES
 #undef X
 
