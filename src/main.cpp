@@ -1,5 +1,4 @@
-#include <bml.hpp>
-#include <iostream>
+#include "bml.hpp"
 int main(void){
     testMatrix();
     }

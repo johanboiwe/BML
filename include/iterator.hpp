@@ -1,6 +1,7 @@
 #ifndef ITERATOR_HPP
 #define ITERATOR_HPP
 #include <tuple>
+#include <cstdint>
 template <typename T> class Matrix;
 enum class TraversalType
 {
@@ -34,7 +35,7 @@ public:
     bool operator!=(const ConstIterator& other) const;
 
     // Dereference
-    std::tuple<unsigned int, unsigned int, const T&> operator*() const;
+    std::tuple<std::uint32_t, std::uint32_t, const T&> operator*() const;
 };
 template<typename T>
 class Iterator
@@ -46,12 +47,12 @@ private:
     TraversalType type;  // Add traversal type
 
 public:
-    Iterator(Matrix<T>& mat, signed long r, signed long c, TraversalType traversalType = TraversalType::Row);
+    Iterator(Matrix<T>& mat, std::int64_t r, std::int64_t c, TraversalType traversalType = TraversalType::Row);
 
     Iterator& operator++();
     bool operator==(const Iterator& other) const;
     bool operator!=(const Iterator& other) const;
-    std::tuple<unsigned int, unsigned int, T> operator*() const;
+    std::tuple<std::uint32_t, std::uint32_t, T> operator*() const;
 };
 
 

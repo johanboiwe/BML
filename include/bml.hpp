@@ -10,6 +10,16 @@
 #include <type_traits>
 #include "iterator.hpp"
 #include "rowView.hpp"
+#if defined(__SIZEOF_POINTER__)
+#if __SIZEOF_POINTER__ != 8
+#error "BML requires a 64-bit target (pointer size must be 8 bytes)."
+#endif
+#elif defined(_WIN64) || defined(__LP64__) || defined(_LP64)
+// OK
+#else
+#error "BML requires a 64-bit target (could not verify pointer size)."
+#endif
+
 
 template<class U> struct storage_of
 {
@@ -40,6 +50,9 @@ struct bml_is_math_integral
       std::is_integral<X>::value &&
       !std::is_same<typename std::remove_cv<X>::type, char>::value &&
       !std::is_same<typename std::remove_cv<X>::type, bool>::value> {};
+template<typename X>
+struct bml_is_bool : std::is_same<typename std::remove_cv<X>::type, bool> {};
+
 
 template<typename T>
 class Matrix
@@ -48,22 +61,23 @@ private:
 // variables
     using store_t = storage_of_t<T>;
     std::vector<store_t> data;
-    unsigned int rows;
-    unsigned int cols;
+    std::uint32_t rows;
+    std::uint32_t cols;
 
     // private methods
-    inline std::size_t toIdx(unsigned int r, unsigned int c) const noexcept;
-    [[nodiscard]] std::pair<unsigned int, unsigned int> toCoords(std::size_t i) const;
+    inline std::size_t toIdx(std::uint32_t r, std::uint32_t c) const noexcept;
+    [[nodiscard]] std::pair<std::uint32_t, std::uint32_t> toCoords(std::size_t i) const;
 
 
 public:
-    Matrix(unsigned int numRows, unsigned int numCols);
+    Matrix(std::uint32_t numRows, std::uint32_t numCols);
 
-    Matrix(const Matrix<T>& oldMatrix);
+    Matrix(const Matrix<T>&) = default;
 
-    unsigned int numRows() const;
 
-    unsigned int numCols() const;
+    std::uint32_t numRows() const;
+
+    std::uint32_t numCols() const;
 
     size_t size() const noexcept;
     bool empty() const noexcept;
@@ -71,16 +85,17 @@ public:
     bool none_of(std::function<bool(T)> p) const;
 
 
-    RowView<T> operator[](unsigned int row);
-    RowView<const T> operator[](unsigned int row) const;
+    RowView<T> operator[](std::uint32_t row);
+    RowView<const T> operator[](std::uint32_t row) const;
 
-    void initFromByteStream(const char* byteStream, size_t byteSize);
+    void initFromByteStream(const uint8_t* byteStream, size_t byteSize);
+    void initFromByteStream(const std::vector<uint8_t>& byteStream);
 
-    std::vector<char> toByteStream() const;
+    std::vector<std::uint8_t> toByteStream() const;
 
-    Matrix copy(const unsigned int startRow = 0, const unsigned int startCol = 0, const int endRow = -1, const int endCol = -1) const;
+    Matrix copy(const std::uint32_t startRow = 0, const std::uint32_t startCol = 0, const std::int32_t endRow = -1, const std::int32_t endCol = -1) const;
 
-    void paste(const Matrix& source, const unsigned int destRow = 0, const unsigned int destCol = 0);
+    void paste(const Matrix& source, const std::uint32_t destRow = 0, const std::uint32_t destCol = 0);
 
     bool all(std::function<bool(T)> condition) const;
 
@@ -93,13 +108,13 @@ public:
 
     std::string toString() const;
 
-    std::vector<T> getRow(unsigned int row,  int startCol = 0,  int endCol = -1) const;
+    std::vector<T> getRow(std::uint32_t row,  std::int32_t startCol = 0,  std::int32_t endCol = -1) const;
 
-    std::vector<T> getColumn(unsigned int col, int startRow = 0, int endRow = -1) const;
+    std::vector<T> getColumn(std::uint32_t col, std::int32_t startRow = 0, std::int32_t endRow = -1) const;
 
-    std::vector<T> getDiagonal( int start = 0,  int end = -1) const;
+    std::vector<T> getDiagonal(std::int32_t start = 0,  std::int32_t end = -1) const;
 
-    std::vector<T> getAntiDiagonal(int start = 0, int end = -1) const;
+    std::vector<T> getAntiDiagonal(std::int32_t start = 0, std::int32_t end = -1) const;
 
     void fill(const T& value);
 
@@ -125,12 +140,12 @@ public:
     // Indices of min/max element (row, col). Throws on empty.
     template<typename U = T>
     std::enable_if_t<!std::is_pointer<U>::value,
-        std::pair<unsigned int, unsigned int>>
+        std::pair<std::uint32_t, std::uint32_t>>
         argmin() const;
 
     template<typename U = T>
     std::enable_if_t<!std::is_pointer<U>::value,
-        std::pair<unsigned int, unsigned int>>
+        std::pair<std::uint32_t, std::uint32_t>>
         argmax() const;
 
 
@@ -177,6 +192,147 @@ public:
     template<typename U = T>
     typename std::enable_if<bml_is_math_integral<U>::value, Matrix<T>>::type
             operator%(const T& scalar) const;
+
+    // ---------- (1) Compound assignment: Matrix ⊕= Matrix ----------
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator+=(const Matrix& other);
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator-=(const Matrix& other);
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator*=(const Matrix& other);
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator/=(const Matrix& other);
+    template<typename U=T> std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator%=(const Matrix& other);
+
+// ---------- (1) Compound assignment: Matrix ⊕= scalar ----------
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator+=(const T& s);
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator-=(const T& s);
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator*=(const T& s);
+    template<typename U=T> std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix&>
+    operator/=(const T& s);
+    template<typename U=T> std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator%=(const T& s);
+
+
+// ---------- Bitwise element-wise (Matrix ⊗ Matrix) ----------
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator&(const Matrix& other) const;
+
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator|(const Matrix& other) const;
+
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator^(const Matrix& other) const;
+
+// ---------- Bitwise element-wise (Matrix ⊗ scalar) ----------
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator&(const T& s) const;
+
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator|(const T& s) const;
+
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator^(const T& s) const;
+
+// ---------- Compound bitwise ----------
+// ---------- Compound bitwise ----------
+    template<typename U = T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator&=(const Matrix& other);
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator|=(const Matrix& other);
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator^=(const Matrix& other);
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator&=(const T& s);
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator|=(const T& s);
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator^=(const T& s);
+
+// ---------- Unary bitwise NOT ----------
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator~() const;
+
+// ---------- Shifts (integrals only) ----------
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator<<(int k) const;
+
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix>
+    operator>>(int k) const;
+
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator<<=(int k);
+
+    template<typename U=T>
+    std::enable_if_t<bml_is_math_integral<U>::value, Matrix&>
+    operator>>=(int k);
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, Matrix>
+    logical_and(const Matrix& other) const;
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, Matrix>
+    logical_or(const Matrix& other) const;
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, Matrix>
+    logical_xor(const Matrix& other) const;
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, Matrix>
+    logical_not() const;
+
+// scalar versions (bool on the right)
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, Matrix>
+    logical_and(bool s) const;
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, Matrix>
+    logical_or(bool s) const;
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, Matrix>
+    logical_xor(bool s) const;
+
+// reductions/convenience for masks
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, std::size_t>
+    count_true() const noexcept;
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, bool>
+    any() const noexcept;
+
+    template<typename U = T>
+    std::enable_if_t<bml_is_bool<U>::value, bool>
+    none() const noexcept;
 };
 
 // Equality operators (available for all T)

@@ -8,20 +8,20 @@
 #include <algorithm> // std::min, std::fill
 #include <cstring>   // std::memcpy
 
+
+
 template<typename T>
-inline std::size_t Matrix<T>::toIdx(unsigned int r, unsigned int c) const noexcept
+inline std::size_t Matrix<T>::toIdx(std::uint32_t r, std::uint32_t c) const noexcept
 {
     return static_cast<std::size_t>(r) * cols + c;
 }
 
 template<typename T>
-std::pair<unsigned int, unsigned int> Matrix<T>::toCoords(std::size_t i) const
+std::pair<std::uint32_t, std::uint32_t> Matrix<T>::toCoords(std::size_t i) const
 {
-    const std::size_t n = static_cast<std::size_t>(rows) * cols;
-    if (cols == 0) throw std::out_of_range("Matrix::toCoords: zero columns");
-    if (i >= n)   throw std::out_of_range("Matrix::toCoords: index out of range");
-    return { static_cast<unsigned int>(i / cols),
-             static_cast<unsigned int>(i % cols) };
+
+    return { static_cast<std::uint32_t>(i / cols),
+             static_cast<std::uint32_t>(i % cols) };
 }
 
 // ======================= Iterators =======================
@@ -44,31 +44,7 @@ Iterator<T> Matrix<T>::begin(TraversalType t)
         return Iterator(*this, 0, 0, TraversalType::Row);
     }
 }
-
-template<typename T>
-Iterator<T> Matrix<T>::end(TraversalType t)
-{
-    switch (t)
-    {
-    case TraversalType::Row:
-        return Iterator(*this, static_cast<long>(numRows()), 0, TraversalType::Row);
-    case TraversalType::Column:
-        return Iterator(*this, 0, static_cast<long>(numCols()), TraversalType::Column);
-    case TraversalType::Diagonal:
-        return Iterator(*this,
-                        static_cast<long>(std::min(numRows(), numCols())),
-                        static_cast<long>(std::min(numRows(), numCols())),
-                        TraversalType::Diagonal);
-    case TraversalType::AntiDiagonal:
-        return Iterator(*this,
-                        static_cast<long>(std::min(numRows(), numCols())),
-                        -1L,
-                        TraversalType::AntiDiagonal);
-    default:
-        return Iterator(*this, static_cast<long>(numRows()), 0, TraversalType::Row);
-    }
-}
-
+// Const begin()
 template<typename T>
 ConstIterator<T> Matrix<T>::begin(TraversalType t) const
 {
@@ -88,6 +64,85 @@ ConstIterator<T> Matrix<T>::begin(TraversalType t) const
 }
 
 template<typename T>
+Iterator<T> Matrix<T>::end(TraversalType t)
+{
+    const long R   = static_cast<long>(numRows());
+    const long C   = static_cast<long>(numCols());
+    const long len = std::min(R, C);
+
+    switch (t)
+    {
+    case TraversalType::Row:
+        // after (R-1, C-1): ++ -> (R, 0)
+        return Iterator(*this, R, 0, TraversalType::Row);
+
+    case TraversalType::Column:
+        // after (R-1, C-1): ++ -> (0, C)
+        return Iterator(*this, 0, C, TraversalType::Column);
+
+    case TraversalType::Diagonal:
+        // after (len-1, len-1): ++ -> (len, len)
+        return Iterator(*this, len, len, TraversalType::Diagonal);
+
+    case TraversalType::AntiDiagonal:
+    {
+        // start is typically (0, C-1)
+        // last valid is (len-1, C-len)
+        // post-increment end is (len, C-len-1)
+        const long endRow = len;
+        const long endCol = C - len - 1;   // NOTE: can be -1 only when C == len (i.e., C <= R)
+        return Iterator(*this, endRow, endCol, TraversalType::AntiDiagonal);
+    }
+
+    default:
+        return Iterator(*this, R, 0, TraversalType::Row);
+    }
+}
+
+template<typename T>
+ConstIterator<T>& ConstIterator<T>::operator++()
+{
+    switch (type)
+    {
+    case TraversalType::Row:
+    {
+        ++col;
+        if (col >= static_cast<long>(matrix.numCols()))
+        {
+            col = 0;
+            ++row;
+        }
+        break;
+    }
+    case TraversalType::Column:
+    {
+        ++row;
+        if (row >= static_cast<long>(matrix.numRows()))
+        {
+            row = 0;
+            ++col;
+        }
+        break;
+    }
+    case TraversalType::Diagonal:
+    {
+        ++row;
+        ++col;
+        break;
+    }
+    case TraversalType::AntiDiagonal:
+    {
+        ++row;
+        --col;
+        break;
+    }
+    }
+    //std::cout<< "this is: "<< this <<std::endl;
+    return *this;
+}
+
+
+template<typename T>
 ConstIterator<T> Matrix<T>::end(TraversalType t) const
 {
     switch (t)
@@ -97,86 +152,86 @@ ConstIterator<T> Matrix<T>::end(TraversalType t) const
     case TraversalType::Column:
         return ConstIterator(*this, 0, static_cast<long>(numCols()), TraversalType::Column);
     case TraversalType::Diagonal:
-        return ConstIterator(*this,
-                             static_cast<long>(std::min(numRows(), numCols())),
-                             static_cast<long>(std::min(numRows(), numCols())),
-                             TraversalType::Diagonal);
+    {
+        const long len = static_cast<long>(std::min(numRows(), numCols()));
+        return ConstIterator(*this, len, len, TraversalType::Diagonal);
+    }
     case TraversalType::AntiDiagonal:
-        return ConstIterator(*this,
-                             static_cast<long>(std::min(numRows(), numCols())),
-                             -1L,
-                             TraversalType::AntiDiagonal);
+    {
+        const long R   = static_cast<long>(numRows());
+        const long C   = static_cast<long>(numCols());
+        const long len = std::min(R, C);
+        // match non-const end(): post-increment of the last element lands here
+        return ConstIterator(*this, len, C - len - 1, TraversalType::AntiDiagonal);
+    }
     default:
         return ConstIterator(*this, static_cast<long>(numRows()), 0, TraversalType::Row);
     }
 }
 
+
 // ======================= Core =======================
 
 template<typename T>
-Matrix<T>::Matrix(unsigned int numRows, unsigned int numCols)
+Matrix<T>::Matrix(std::uint32_t numRows, std::uint32_t numCols)
     : rows(numRows), cols(numCols)
 {
-    data.resize(numRows* numCols);
+    data.resize((std::size_t)numRows* (std::size_t)numCols);
 }
 
-template<typename T>
-Matrix<T>::Matrix(const Matrix<T>& oldMatrix)
-{
-    rows = oldMatrix.numRows();
-    cols = oldMatrix.numCols();
-    std::vector<char> byteVector = oldMatrix.toByteStream();
-    char* byteStream = byteVector.data();
-    initFromByteStream(byteStream, static_cast<unsigned int>(byteVector.size()));
-}
 
 template<typename T>
-unsigned int Matrix<T>::numRows() const
+std::uint32_t Matrix<T>::numRows() const
 {
     return rows;
 }
 
 template<typename T>
-unsigned int Matrix<T>::numCols() const
+std::uint32_t Matrix<T>::numCols() const
 {
     return cols;
 }
 
 template<typename T>
-RowView<T> Matrix<T>::operator[](unsigned int row)
+RowView<T> Matrix<T>::operator[](std::uint32_t row)
 {
     return RowView<T>(data.data()+ toIdx(row, 0), cols);
 }
 
 template<typename T>
-RowView<const T> Matrix<T>::operator[](unsigned int row) const
+RowView<const T> Matrix<T>::operator[](std::uint32_t row) const
 {
     return RowView<const T>(data.data()+ toIdx(row, 0), cols);
 }
 
 template<typename T>
-void Matrix<T>::initFromByteStream(const char* byteStream, size_t byteSize)
+void Matrix<T>::initFromByteStream(const std::uint8_t* byteStream, size_t byteSize)
 {
-    if (byteSize != rows * cols * sizeof(T))
-        throw std::runtime_error("Invalid byte stream size");
+    if (byteSize != (rows * cols)*sizeof(T))throw std::runtime_error("Invalid byte stream size");
 
     std::memcpy(data.data(), byteStream, byteSize);
+}
+template<typename T>
+void Matrix<T>::initFromByteStream(const std::vector<std::uint8_t>& bytes)
+{
+    initFromByteStream(bytes.data(), bytes.size());
 }
 
 
 
 template<typename T>
-std::vector<char> Matrix<T>::toByteStream() const
+std::vector<uint8_t> Matrix<T>::toByteStream() const
 {
-    std::vector<char> byteStream(rows * cols * sizeof(T));
+    std::vector<uint8_t> byteStream(rows * cols * sizeof(T));
 
-    std::memcpy(byteStream.data(), data.data(), data.size());
+
+    std::memcpy(byteStream.data(), data.data(), data.size() * sizeof(T));
 
     return byteStream;
 }
 
 template<>
-void Matrix<std::string>::initFromByteStream(const char* byteStream, size_t byteSize)
+void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t byteSize)
 {
     //finding the stat locations in the stream
     std::vector<size_t> startLocations;
@@ -190,27 +245,31 @@ void Matrix<std::string>::initFromByteStream(const char* byteStream, size_t byte
     if(startLocations[startLocations.size()-1]-0 != byteSize)throw std::runtime_error("Invalid byte stream format for Matrix<std::string>, does not end with a null");
 
     // setting the matrixstrings
-    size_t couter = 0;
+    size_t counter = 0;
     for (const auto& [row, col, _ ] : *this)
     {
-        char* currentCStr = new char [startLocations[couter+1] - startLocations[couter]];
-        std::memcpy(currentCStr, byteStream + startLocations[couter], startLocations[couter+1] - startLocations[couter]);
-        (*this)[row][col] = std::string(currentCStr);
+        char* currentCStr = new char [startLocations[counter+1] - startLocations[counter]];
+        std::memcpy(currentCStr, byteStream + startLocations[counter], startLocations[counter+1] - startLocations[counter]);
+        try
+        {
+            (*this)[row][col] = std::string(currentCStr);
+        }
+        catch (const std::exception& e)
+        {
+            delete[] currentCStr;
+            throw;
+        }
         delete[] currentCStr;
-        couter++;
+        counter++;
     }
 
 }
 
 template<>
-std::vector<char> Matrix<std::string>::toByteStream() const
+std::vector<uint8_t> Matrix<std::string>::toByteStream() const
 {
-    std::vector<char> result;
+    std::vector<uint8_t> result;
 
-    // (Optional) pre-reserve if you want fewer reallocations:
-    // size_t total = 0;
-    // for (const auto& [r, c, cell] : *this) total += cell.size() + 1;
-    // result.reserve(total);
 
     for (const auto& [_, __, cell] : *this)
     {
@@ -223,42 +282,62 @@ std::vector<char> Matrix<std::string>::toByteStream() const
     return result;
 }
 template<typename T>
-Matrix<T> Matrix<T>::copy(const unsigned int startRow,
-                          const unsigned int startCol,
-                          const int endRow,
-                          const int endCol) const
+Matrix<T> Matrix<T>::copy(std::uint32_t startRow,
+                          std::uint32_t startCol,
+                          int endRow, int endCol) const
 {
-    unsigned int copyEndRow = (endRow == -1) ? rows : static_cast<unsigned int>(endRow);
-    unsigned int copyEndCol = (endCol == -1) ? cols : static_cast<unsigned int>(endCol);
+    const std::uint32_t rEnd =
+        (endRow == -1) ? rows :
+        (endRow < 0)   ? throw std::out_of_range("endRow < -1"), 0u
+        : static_cast<std::uint32_t>(endRow);
 
-    if (startRow < 0 || copyEndRow > rows)
-        throw std::out_of_range("Invalid copy indices: row range");
-    if (startCol < 0 || copyEndCol > cols)
-        throw std::out_of_range("Invalid copy indices: col range");
-    if (startRow > copyEndRow)
-        throw std::out_of_range("Invalid copy indices: startRow > endRow");
-    if (startCol >= copyEndCol)
-        throw std::out_of_range("Invalid copy indices: startCol >= endCol");
+    const std::uint32_t cEnd =
+        (endCol == -1) ? cols :
+        (endCol < 0)   ? throw std::out_of_range("endCol < -1"), 0u
+        : static_cast<std::uint32_t>(endCol);
 
-    Matrix result(copyEndRow - startRow, copyEndCol - startCol);
-    for (unsigned int i = startRow, r = 0; i < copyEndRow; ++i, ++r)
-        for (unsigned int j = startCol, c = 0; j < copyEndCol; ++j, ++c)
-            result[r][c] = (*this)[i][j];
+    if (startRow > rows || rEnd > rows) throw std::out_of_range("row range");
+    if (startCol > cols || cEnd > cols) throw std::out_of_range("col range");
+    if (startRow > rEnd)                throw std::out_of_range("startRow > endRow");
+    if (startCol > cEnd)                throw std::out_of_range("startCol > endCol");
 
-    return result;
+    Matrix<T> out(rEnd - startRow, cEnd - startCol);
+    for (std::uint32_t i = startRow, r = 0; i < rEnd; ++i, ++r)
+        for (std::uint32_t j = startCol, c = 0; j < cEnd; ++j, ++c)
+            out[r][c] = (*this)[i][j];
+    return out;
 }
+
 
 template<typename T>
-void Matrix<T>::paste(const Matrix& source, const unsigned int destRow, const unsigned int destCol)
+void Matrix<T>::paste(const Matrix& src, std::uint32_t destRow, std::uint32_t destCol)
 {
-    if (destRow < 0 || destRow + source.numRows() > rows ||
-            destCol < 0 || destCol + source.numCols() > cols)
-        throw std::out_of_range("Invalid paste indices");
+    const std::uint32_t h = src.numRows();
+    const std::uint32_t w = src.numCols();
 
-    for (unsigned int i = 0; i < source.numRows(); ++i)
-        for (unsigned int j = 0; j < source.numCols(); ++j)
-            (*this)[destRow + i][destCol + j] = source[i][j];
+    if (h == 0 || w == 0) return; // nothing to do
+
+    // Bounds without overflow:
+    if (destRow > rows || destCol > cols)
+        throw std::out_of_range("Invalid paste start");
+    if (h > rows - destRow || w > cols - destCol)
+        throw std::out_of_range("Invalid paste extent");
+
+    // Guard self-paste (same object) — make a temp copy once
+    if (&src == this)
+    {
+        Matrix<T> tmp = src; // cheap for small, correct for all
+        for (std::uint32_t i = 0; i < h; ++i)
+            for (std::uint32_t j = 0; j < w; ++j)
+                (*this)[destRow + i][destCol + j] = tmp[i][j];
+        return;
+    }
+
+    for (std::uint32_t i = 0; i < h; ++i)
+        for (std::uint32_t j = 0; j < w; ++j)
+            (*this)[destRow + i][destCol + j] = src[i][j];
 }
+
 
 template<typename T>
 bool Matrix<T>::all(std::function<bool(T)> condition) const
@@ -272,8 +351,8 @@ template<typename T>
 Matrix<T> Matrix<T>::where(std::function<bool(T)> condition, T trueValue, T falseValue) const
 {
     Matrix<T> result(rows, cols);
-    for (unsigned int i = 0; i < rows; ++i)
-        for (unsigned int j = 0; j < cols; ++j)
+    for (std::uint32_t i = 0; i < rows; ++i)
+        for (std::uint32_t j = 0; j < cols; ++j)
             result[i][j] = condition((*this)[i][j]) ? trueValue : falseValue;
     return result;
 }
@@ -286,34 +365,52 @@ std::string Matrix<T>::toString() const
     std::stringstream ss;
     return ss.str();
 }
-
 template<typename T>
-std::vector<T> Matrix<T>::getRow(unsigned int row, int startCol, int endCol) const
+std::vector<T> Matrix<T>::getRow(std::uint32_t row, int startCol, int endCol) const
+{
+    if (row >= rows) throw std::out_of_range("Invalid row index");
+
+    if (endCol == -1) endCol = static_cast<int>(cols);
+    if (startCol < 0 || endCol < 0) throw std::out_of_range("Negative column index");
+
+    const std::uint32_t s = static_cast<std::uint32_t>(startCol);
+    const std::uint32_t e = static_cast<std::uint32_t>(endCol);
+    if (s > e || e > cols) throw std::out_of_range("Invalid column slice indices");
+
+    const T* first = data.data() + toIdx(row, s);
+    const T* last  = data.data() + toIdx(row, e);
+    return std::vector<T>(first, last);
+}
+
+template<>
+std::vector<bool>
+Matrix<bool>::getRow(std::uint32_t row, int startCol, int endCol) const
 {
     if (row >= rows)
         throw std::out_of_range("Invalid row index");
 
     if (endCol == -1) endCol = static_cast<int>(cols);
-
     if (startCol < 0 || endCol < 0)
         throw std::out_of_range("Negative column index");
 
-    const unsigned int s = static_cast<unsigned int>(startCol);
-    const unsigned int e = static_cast<unsigned int>(endCol);
-
-    if (s > e || e > static_cast<unsigned int>(cols))
+    const std::uint32_t s = static_cast<std::uint32_t>(startCol);
+    const std::uint32_t e = static_cast<std::uint32_t>(endCol);
+    if (s > e || e > cols)
         throw std::out_of_range("Invalid column slice indices");
 
-    return std::vector<T>(
-               data.data() + toIdx(row, s),
-               data.data() + toIdx(row, e)
-           );
+    std::vector<bool> out;
+    out.reserve(static_cast<std::size_t>(e - s));
+
+    for (std::uint32_t j = s; j < e; ++j)
+        out.push_back(data[toIdx(row, j)] != 0);
+
+    return out;
 }
 
 
 
 template<typename T>
-std::vector<T> Matrix<T>::getColumn(unsigned int col, int startRow, int endRow) const
+std::vector<T> Matrix<T>::getColumn(std::uint32_t col, int startRow, int endRow) const
 {
     if (col >= cols)
         throw std::out_of_range("Invalid column index");
@@ -323,16 +420,16 @@ std::vector<T> Matrix<T>::getColumn(unsigned int col, int startRow, int endRow) 
     if (startRow < 0 || endRow < 0)
         throw std::out_of_range("Negative row index");
 
-    const unsigned int s = static_cast<unsigned int>(startRow);
-    const unsigned int e = static_cast<unsigned int>(endRow);
+    const std::uint32_t s = static_cast<std::uint32_t>(startRow);
+    const std::uint32_t e = static_cast<std::uint32_t>(endRow);
 
-    if (s > e || e > static_cast<unsigned int>(rows))
+    if (s > e || e > static_cast<std::uint32_t>(rows))
         throw std::out_of_range("Invalid row slice indices");
 
     std::vector<T> result;
     result.reserve(static_cast<size_t>(e - s));
 
-    for (unsigned int i = s; i < e; ++i)
+    for (std::uint32_t i = s; i < e; ++i)
         result.push_back(data[toIdx(i, col)]);
 
     return result;
@@ -343,12 +440,12 @@ template<typename T>
 std::vector<T> Matrix<T>::getDiagonal(int start, int end) const
 {
     if (start < 0) start = 0;
-    const unsigned int limit = std::min(rows, cols);
+    const std::uint32_t limit = std::min(rows, cols);
     if (end == -1) end = static_cast<int>(limit);
     if (end < 0) throw std::out_of_range("Negative end index");
 
-    const unsigned int s = static_cast<unsigned int>(start);
-    const unsigned int e = static_cast<unsigned int>(end);
+    const std::uint32_t s = static_cast<std::uint32_t>(start);
+    const std::uint32_t e = static_cast<std::uint32_t>(end);
 
     if (s > e || e > limit)
         throw std::out_of_range("Invalid diagonal indices");
@@ -356,7 +453,7 @@ std::vector<T> Matrix<T>::getDiagonal(int start, int end) const
     std::vector<T> result;
     result.reserve(static_cast<size_t>(e - s));
 
-    for (unsigned int i = s; i < e; ++i)
+    for (std::uint32_t i = s; i < e; ++i)
         result.push_back(data[toIdx(i, i)]);
 
     return result;
@@ -368,12 +465,12 @@ std::vector<T> Matrix<T>::getAntiDiagonal(int start, int end) const
 {
     if (start < 0) start = 0;
 
-    const unsigned int limit = std::min(rows, cols);
+    const std::uint32_t limit = std::min(rows, cols);
     if (end == -1) end = static_cast<int>(limit);
     if (end < 0) throw std::out_of_range("Negative end index");
 
-    const unsigned int s = static_cast<unsigned int>(start);
-    const unsigned int e = static_cast<unsigned int>(end);
+    const std::uint32_t s = static_cast<std::uint32_t>(start);
+    const std::uint32_t e = static_cast<std::uint32_t>(end);
 
     if (s > e || e > limit)
         throw std::out_of_range("Invalid anti-diagonal indices");
@@ -385,9 +482,9 @@ std::vector<T> Matrix<T>::getAntiDiagonal(int start, int end) const
     std::vector<T> result;
     result.reserve(static_cast<size_t>(e - s));
 
-    for (unsigned int i = s; i < e; ++i)
+    for (std::uint32_t i = s; i < e; ++i)
     {
-        const unsigned int j = static_cast<unsigned int>(cols) - 1u - i;
+        const std::uint32_t j = static_cast<std::uint32_t>(cols) - 1u - i;
         result.push_back(data[toIdx(i, j)]);
     }
 
@@ -445,7 +542,6 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
         result.data.data()[i] = data.data()[i] - other.data.data()[i];
     }
     return result;
-    return result;
 }
 
 // Matrix * Matrix
@@ -463,7 +559,6 @@ typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
     {
         result.data.data()[i] = data.data()[i] * other.data.data()[i];
     }
-    return result;
     return result;
 }
 
@@ -593,8 +688,8 @@ bool operator==(const Matrix<T>& lhs, const Matrix<T>& rhs)
 {
     if (lhs.numRows() != rhs.numRows() || lhs.numCols() != rhs.numCols())
         return false;
-    for (unsigned int i = 0; i < lhs.numRows(); ++i)
-        for (unsigned int j = 0; j < lhs.numCols(); ++j)
+    for (std::uint32_t i = 0; i < lhs.numRows(); ++i)
+        for (std::uint32_t j = 0; j < lhs.numCols(); ++j)
             if (lhs[i][j] != rhs[i][j]) return false;
     return true;
 }
@@ -614,8 +709,8 @@ bool operator<(const Matrix<T>& lhs, const Matrix<T>& rhs)
         return lhs.numRows() < rhs.numRows();
     if (lhs.numCols() != rhs.numCols())
         return lhs.numCols() < rhs.numCols();
-    for (unsigned int i = 0; i < lhs.numRows(); ++i)
-        for (unsigned int j = 0; j < lhs.numCols(); ++j)
+    for (std::uint32_t i = 0; i < lhs.numRows(); ++i)
+        for (std::uint32_t j = 0; j < lhs.numCols(); ++j)
             if (lhs[i][j] != rhs[i][j])
                 return lhs[i][j] < rhs[i][j];
     return false; // equal
@@ -684,6 +779,8 @@ template<typename U>
 typename std::enable_if<!std::is_pointer<U>::value, T>::type
 Matrix<T>::min() const
 {
+    if (data.empty())
+        throw std::runtime_error("Matrix::min() on empty matrix");
     T minimalValue = data[0];
     for(auto& cell: data)
     {
@@ -697,6 +794,8 @@ template<typename U>
 typename std::enable_if<!std::is_pointer<U>::value, T>::type
 Matrix<T>::max() const
 {
+    if (data.empty())
+        throw std::runtime_error("Matrix::min() on empty matrix");
     T maxValue = data[0];
     for(auto& cell: data)
     {
@@ -743,8 +842,8 @@ bool Matrix<T>::empty() const noexcept
 template<typename T>
 template<typename U>
 std::enable_if_t<!std::is_pointer<U>::value,
-    std::pair<unsigned int, unsigned int>>
-Matrix<T>::argmin() const
+    std::pair<std::uint32_t, std::uint32_t>>
+    Matrix<T>::argmin() const
 {
     if (data.empty())
         throw std::runtime_error("Matrix::argmin() on empty matrix");
@@ -769,8 +868,8 @@ Matrix<T>::argmin() const
 template<typename T>
 template<typename U>
 std::enable_if_t<!std::is_pointer<U>::value,
-    std::pair<unsigned int, unsigned int>>
-Matrix<T>::argmax() const
+    std::pair<std::uint32_t, std::uint32_t>>
+    Matrix<T>::argmax() const
 {
     if (data.empty())
         throw std::runtime_error("Matrix::argmax() on empty matrix");
@@ -791,5 +890,582 @@ Matrix<T>::argmax() const
     }
     return toCoords(maxIndex);
 }
+
+
+// ---------- (1) Compound assignment: Matrix ⊕= Matrix ----------
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator+=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] += other.data[i];
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator-=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] -= other.data[i];
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator*=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] *= other.data[i];
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator/=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        if (other.data[i] == 0) throw std::runtime_error("Division by zero encountered.");
+        data[i] /= other.data[i];
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator%=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        if (other.data[i] == 0) throw std::runtime_error("Modulus by zero encountered.");
+        data[i] %= other.data[i];
+    }
+    return *this;
+}
+
+// ---------- (1) Compound assignment: Matrix ⊕= scalar ----------
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator+=(const T& s)
+{
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] += s;
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator-=(const T& s)
+{
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] -= s;
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator*=(const T& s)
+{
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] *= s;
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
+Matrix<T>::operator/=(const T& s)
+{
+    if (s == 0)
+        throw std::runtime_error("Division by zero encountered.");
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] /= s;
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator%=(const T& s)
+{
+    if (s == 0)
+        throw std::runtime_error("Modulus by zero encountered.");
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        data[i] %= s;
+    }
+    return *this;
+}
+
+// ---------- Bitwise element-wise (Matrix ⊗ Matrix) ----------
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator&(const Matrix& other) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] & other.data[i];
+    }
+    return result;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator|(const Matrix& other) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] | other.data[i];
+    }
+    return result;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator^(const Matrix& other) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] ^ other.data[i];
+    }
+    return result;
+}
+
+
+// ---------- Bitwise element-wise (Matrix ⊗ scalar) ----------
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator&(const T& s) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] & s;
+    }
+    return result;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator|(const T& s) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] | s;
+    }
+    return result;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator^(const T& s) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] ^ s;
+    }
+    return result;
+}
+
+// ---------- Compound bitwise (your decls return Matrix by value) ----------
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator&=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+
+    for (size_t i = 0; i < data.size(); ++i)
+        data[i] &= other.data[i];
+
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator|=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+
+    for (size_t i = 0; i < data.size(); ++i)
+        data[i] |= other.data[i];
+
+    return *this;
+}
+
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator^=(const Matrix& other)
+{
+    if (rows != other.rows || cols != other.cols)
+        throw std::invalid_argument("Matrix dimensions must match.");
+
+    for (size_t i = 0; i < data.size(); ++i)
+        data[i] ^= other.data[i];
+
+    return *this;
+}
+
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator&=(const T& s)
+{
+
+
+    for (size_t i = 0; i < data.size(); ++i)
+        data[i] &= s;
+
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator|=(const T& s)
+{
+
+
+    for (size_t i = 0; i < data.size(); ++i)
+        data[i] |= s;
+
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator^=(const T& s)
+{
+
+
+    for (size_t i = 0; i < data.size(); ++i)
+        data[i] ^= s;
+
+    return *this;
+}
+
+// ---------- Unary bitwise NOT ----------
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator~() const
+{
+    Matrix<T> result(rows, cols);
+    for (size_t i = 0; i < data.size(); ++i)
+    {
+        result.data[i] = static_cast<T>(~data[i]);
+    }
+    return result;
+}
+
+// ---------- Shifts (integrals only) ----------
+#include <limits>
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator<<(int k) const
+{
+    using Uns = std::make_unsigned_t<U>;
+    Matrix<T> out(rows, cols);
+
+    if (data.empty()) return out;
+    if (k == 0)
+    {
+        out.data = data;
+        return out;
+    }
+
+    const unsigned w = static_cast<unsigned>(std::numeric_limits<Uns>::digits);
+
+    if (k < 0)
+    {
+        const unsigned s = static_cast<unsigned>(-k) % w;
+        for (std::size_t i = 0; i < data.size(); ++i)
+        {
+            Uns u = static_cast<Uns>(data[i]);
+            u >>= s; // logical right shift
+            out.data[i] = static_cast<T>(u);
+        }
+        return out;
+    }
+
+    const unsigned s = static_cast<unsigned>(k) % w;
+    for (std::size_t i = 0; i < data.size(); ++i)
+    {
+        Uns u = static_cast<Uns>(data[i]);
+        u <<= s; // logical left shift on Uns
+        out.data[i] = static_cast<T>(u);
+    }
+    return out;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>>
+        Matrix<T>::operator>>(int k) const
+{
+    using Uns = std::make_unsigned_t<U>;
+    using Sig = std::make_signed_t<U>;
+
+    Matrix<T> out(rows, cols);
+    if (data.empty()) return out;
+    if (k == 0)
+    {
+        out.data = data;
+        return out;
+    }
+
+    const unsigned w = static_cast<unsigned>(std::numeric_limits<Uns>::digits);
+
+    if (k < 0)
+    {
+        const unsigned s = static_cast<unsigned>(-k) % w;
+        // negative k => left shift
+        for (std::size_t i = 0; i < data.size(); ++i)
+        {
+            Uns u = static_cast<Uns>(data[i]);
+            u <<= s;
+            out.data[i] = static_cast<T>(u);
+        }
+        return out;
+    }
+
+    const unsigned s = static_cast<unsigned>(k) % w;
+    for (std::size_t i = 0; i < data.size(); ++i)
+    {
+        if constexpr (std::is_signed<U>::value)
+        {
+            Sig v = static_cast<Sig>(data[i]);
+            v >>= s; // arithmetic right shift
+            out.data[i] = static_cast<T>(v);
+        }
+        else
+        {
+            Uns u = static_cast<Uns>(data[i]);
+            u >>= s; // logical right shift
+            out.data[i] = static_cast<T>(u);
+        }
+    }
+    return out;
+}
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator<<=(int k)
+{
+    using Uns = std::make_unsigned_t<U>;
+    if (data.empty() || k == 0) return *this;
+
+    const unsigned w = static_cast<unsigned>(std::numeric_limits<Uns>::digits);
+
+    if (k < 0)
+    {
+        const unsigned s = static_cast<unsigned>(-k) % w;
+        for (std::size_t i = 0; i < data.size(); ++i)
+        {
+            Uns u = static_cast<Uns>(data[i]);
+            u >>= s;
+            data[i] = static_cast<T>(u);
+        }
+        return *this;
+    }
+
+    const unsigned s = static_cast<unsigned>(k) % w;
+    for (std::size_t i = 0; i < data.size(); ++i)
+    {
+        Uns u = static_cast<Uns>(data[i]);
+        u <<= s;
+        data[i] = static_cast<T>(u);
+    }
+    return *this;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_math_integral<U>::value, Matrix<T>&>
+Matrix<T>::operator>>=(int k)
+{
+    using Uns = std::make_unsigned_t<U>;
+    using Sig = std::make_signed_t<U>;
+
+    if (data.empty() || k == 0) return *this;
+
+    const unsigned w = static_cast<unsigned>(std::numeric_limits<Uns>::digits);
+
+    if (k < 0)
+    {
+        const unsigned s = static_cast<unsigned>(-k) % w;
+        // negative k => left shift
+        for (std::size_t i = 0; i < data.size(); ++i)
+        {
+            Uns u = static_cast<Uns>(data[i]);
+            u <<= s;
+            data[i] = static_cast<T>(u);
+        }
+        return *this;
+    }
+
+    const unsigned s = static_cast<unsigned>(k) % w;
+    for (std::size_t i = 0; i < data.size(); ++i)
+    {
+        if constexpr (std::is_signed<U>::value)
+        {
+            Sig v = static_cast<Sig>(data[i]);
+            v >>= s; // arithmetic
+            data[i] = static_cast<T>(v);
+        }
+        else
+        {
+            Uns u = static_cast<Uns>(data[i]);
+            u >>= s; // logical
+            data[i] = static_cast<T>(u);
+        }
+    }
+    return *this;
+}
+
+
+
+// ---------- Logical ops for Matrix<bool> ----------
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, Matrix<T>>
+        Matrix<T>::logical_and(const Matrix& other) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] && other.data[i];
+    }
+    return result;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, Matrix<T>>
+        Matrix<T>::logical_or(const Matrix& other) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] || other.data[i];
+    }
+    return result;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, Matrix<T>>
+        Matrix<T>::logical_xor(const Matrix& other) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] != other.data[i];
+    }
+    return result;
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, Matrix<T>>
+        Matrix<T>::logical_not() const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = !data[i];
+    }
+    return result;
+}
+
+// scalar versions (bool on the right)
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, Matrix<T>>
+        Matrix<T>::logical_and(bool s) const
+{
+    {
+        Matrix<T> result(rows, cols);
+        for(size_t i = 0; i < data.size(); i++)
+        {
+            result.data[i] = data[i] && s;
+        }
+        return result;
+    }
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, Matrix<T>>
+        Matrix<T>::logical_or(bool s) const
+
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] || s;
+    }
+    return result;
+}
+
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, Matrix<T>>
+        Matrix<T>::logical_xor(bool s) const
+{
+    Matrix<T> result(rows, cols);
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        result.data[i] = data[i] != s;
+    }
+    return result;
+}
+// reductions/convenience for masks
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, std::size_t>
+Matrix<T>::count_true() const noexcept
+{
+    size_t result = 0;
+    for(size_t i = 0; i < data.size(); i++)if(data[i])result++;
+    return result;
+}
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, bool>
+Matrix<T>::any() const noexcept
+{
+    for (bool cell : data)            // data stores uint8_t for bool
+        if (cell) return true;        // first true => done
+    return false;                   // empty matrix also returns false
+}
+
+template<typename T> template<typename U>
+std::enable_if_t<bml_is_bool<U>::value, bool>
+Matrix<T>::none() const noexcept
+{
+    for (bool cell : data)
+        if (cell) return false;       // first true => not none
+    return true;                    // empty matrix returns true
+}
+
 
 

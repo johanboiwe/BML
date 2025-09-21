@@ -7,19 +7,19 @@ template<typename T>
 RowView<T>::RowView() noexcept : row(nullptr), length(0) {}
 
 template<typename T>
-RowView<T>::RowView(T* dataPointer, unsigned int length_) noexcept
+RowView<T>::RowView(T* dataPointer, std::uint32_t length_) noexcept
     : row(dataPointer), length(length_) {}
 
 // ---- element access (bounds-checked) ----
 template<typename T>
-T& RowView<T>::operator[](unsigned int col)
+T& RowView<T>::operator[](std::uint32_t col)
 {
     if (col >= length) throw std::out_of_range("RowView::operator[] out of range");
     return row[col];
 }
 
 template<typename T>
-const T& RowView<T>::operator[](unsigned int col) const
+const T& RowView<T>::operator[](std::uint32_t col) const
 {
     if (col >= length) throw std::out_of_range("RowView::operator[] out of range");
     return row[col];
@@ -52,7 +52,7 @@ const T* RowView<T>::end() const noexcept
 
 // ---- info / raw access ----
 template<typename T>
-unsigned int RowView<T>::size() const noexcept
+std::uint32_t RowView<T>::size() const noexcept
 {
     return length;
 }
@@ -88,29 +88,29 @@ BoolRef& BoolRef::operator=(const BoolRef& other) noexcept {
 // ====================== RowView<bool> definitions ======================
 RowView<bool>::RowView() noexcept : row(nullptr), length(0) {}
 
-RowView<bool>::RowView(std::uint8_t* dataPointer, unsigned int length) noexcept
+RowView<bool>::RowView(std::uint8_t* dataPointer, std::uint32_t length) noexcept
     : row(dataPointer), length(length) {}
 
-BoolRef RowView<bool>::operator[](unsigned int col) {
+BoolRef RowView<bool>::operator[](std::uint32_t col) {
     if (col >= length) throw std::out_of_range("RowView<bool>: col out of range");
     return BoolRef{ row + col };
 }
 
-bool RowView<bool>::operator[](unsigned int col) const {
+bool RowView<bool>::operator[](std::uint32_t col) const {
     if (col >= length) throw std::out_of_range("RowView<bool>: col out of range");
     return row[col] != 0;
 }
 
 // iterators (index-based)
 struct RowView<bool>::iterator {
-    std::uint8_t* p; unsigned int i;
+    std::uint8_t* p; std::uint32_t i;
     BoolRef operator*() const { return BoolRef{ p + i }; }
     iterator& operator++() { ++i; return *this; }
     bool operator!=(const iterator& o) const { return i != o.i; }
 };
 
 struct RowView<bool>::const_iterator {
-    const std::uint8_t* p; unsigned int i;
+    const std::uint8_t* p; std::uint32_t i;
     bool operator*() const { return p[i] != 0; }
     const_iterator& operator++() { ++i; return *this; }
     bool operator!=(const const_iterator& o) const { return i != o.i; }
@@ -121,7 +121,7 @@ RowView<bool>::iterator RowView<bool>::end()   noexcept       { return iterator{
 RowView<bool>::const_iterator RowView<bool>::begin() const noexcept { return const_iterator{ row, 0u }; }
 RowView<bool>::const_iterator RowView<bool>::end()   const noexcept { return const_iterator{ row, length }; }
 
-unsigned int RowView<bool>::size() const noexcept  { return length; }
+std::uint32_t RowView<bool>::size() const noexcept  { return length; }
 bool RowView<bool>::empty() const noexcept         { return length == 0; }
 
 std::uint8_t* RowView<bool>::data_storage() noexcept             { return row; }
@@ -131,16 +131,16 @@ const std::uint8_t* RowView<bool>::data_storage() const noexcept { return row; }
 // =================== RowView<const bool> definitions ===================
 RowView<const bool>::RowView() noexcept : row(nullptr), length(0) {}
 
-RowView<const bool>::RowView(const std::uint8_t* dataPointer, unsigned int length) noexcept
+RowView<const bool>::RowView(const std::uint8_t* dataPointer, std::uint32_t length) noexcept
     : row(dataPointer), length(length) {}
 
-bool RowView<const bool>::operator[](unsigned int col) const {
+bool RowView<const bool>::operator[](std::uint32_t col) const {
     if (col >= length) throw std::out_of_range("RowView<const bool>: col out of range");
     return row[col] != 0;
 }
 
 struct RowView<const bool>::const_iterator {
-    const std::uint8_t* p; unsigned int i;
+    const std::uint8_t* p; std::uint32_t i;
     bool operator*() const { return p[i] != 0; }
     const_iterator& operator++() { ++i; return *this; }
     bool operator!=(const const_iterator& o) const { return i != o.i; }
@@ -149,7 +149,7 @@ struct RowView<const bool>::const_iterator {
 RowView<const bool>::const_iterator RowView<const bool>::begin() const noexcept { return const_iterator{ row, 0u }; }
 RowView<const bool>::const_iterator RowView<const bool>::end()   const noexcept { return const_iterator{ row, length }; }
 
-unsigned int RowView<const bool>::size() const noexcept  { return length; }
+std::uint32_t RowView<const bool>::size() const noexcept  { return length; }
 bool RowView<const bool>::empty() const noexcept         { return length == 0; }
 
 const std::uint8_t* RowView<const bool>::data_storage() const noexcept { return row; }

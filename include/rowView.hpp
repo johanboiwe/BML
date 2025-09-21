@@ -9,12 +9,12 @@ class RowView
 public:
     // ---- constructors ----
     RowView() noexcept;
-    RowView(T* dataPointer, unsigned int length) noexcept;
+    RowView(T* dataPointer, std::uint32_t length) noexcept;
 
     // ---- element access (bounds-checked) ----
     // Throws std::out_of_range if col >= length.
-    T&       operator[](unsigned int col);
-    const T& operator[](unsigned int col) const;
+    T&       operator[](std::uint32_t col);
+    const T& operator[](std::uint32_t col) const;
 
     // ---- iteration (enables range-for) ----
     T*       begin() noexcept;
@@ -23,7 +23,7 @@ public:
     const T* end()   const noexcept;
 
     // ---- info / raw access ----
-    unsigned int size()  const noexcept;
+    std::uint32_t size()  const noexcept;
     bool         empty() const noexcept;
     T*           data()  const noexcept;
 
@@ -31,7 +31,7 @@ public:
 
 private:
     T*           row;
-    unsigned int length;
+    std::uint32_t length;
 };
 // ---------- Writable proxy for byte-backed bools (declaration only) ----------
 class BoolRef
@@ -51,11 +51,11 @@ template<> class RowView<bool>
 {
 public:
     RowView() noexcept;
-    RowView(std::uint8_t* dataPointer, unsigned int length) noexcept;
+    RowView(std::uint8_t* dataPointer, std::uint32_t length) noexcept;
 
     // element access (bounds-checked)
-    BoolRef operator[](unsigned int col);
-    bool    operator[](unsigned int col) const;
+    BoolRef operator[](std::uint32_t col);
+    bool    operator[](std::uint32_t col) const;
 
     // iteration (range-for)
     struct iterator;        // defined in .cpp
@@ -66,7 +66,7 @@ public:
     const_iterator end()   const noexcept;
 
     // info / raw access
-    unsigned int size()  const noexcept;
+    std::uint32_t size()  const noexcept;
     bool         empty() const noexcept;
 
     // bool has no meaningful bool*; expose storage pointer instead
@@ -80,7 +80,7 @@ public:
 
 private:
     std::uint8_t* row;
-    unsigned int  length;
+    std::uint32_t  length;
 };
 
 // ================== specialisation: RowView<const bool> (declaration) ==================
@@ -88,15 +88,15 @@ template<> class RowView<const bool>
 {
 public:
     RowView() noexcept;
-    RowView(const std::uint8_t* dataPointer, unsigned int length) noexcept;
+    RowView(const std::uint8_t* dataPointer, std::uint32_t length) noexcept;
 
-    bool operator[](unsigned int col) const;
+    bool operator[](std::uint32_t col) const;
 
     struct const_iterator; // defined in .cpp
     const_iterator begin() const noexcept;
     const_iterator end()   const noexcept;
 
-    unsigned int size()  const noexcept;
+    std::uint32_t size()  const noexcept;
     bool         empty() const noexcept;
 
     const std::uint8_t* data_storage() const noexcept;
@@ -106,7 +106,7 @@ public:
 
 private:
     const std::uint8_t* row;
-    unsigned int        length;
+    std::uint32_t        length;
 };
 
 #endif // ROWVIEW_HPP
