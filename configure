@@ -62,9 +62,9 @@ Other:
   --help                    This help
 
 Notes:
-- This script enforces 64-bit builds (-m64).
-- By default it builds *and* installs both static and shared libraries.
-- Tests are built & run by default as part of 'make'. Skip with: make NO_TESTS=1
+- 64-bit builds enforced (-m64).
+- Single-TU library build: src/instantiations.cpp (includes bml.cpp/iterator.cpp/rowView.cpp).
+- Tests are built & run by default. Skip with: make NO_TESTS=1
 EOF
 }
 
@@ -112,6 +112,16 @@ if [[ "$IS_CLANG" == "false" && "$IS_GCC" == "false" ]]; then
   IS_GCC="true"
 fi
 
+# Extract LLVM major (e.g. 18) to find matching llvm-ar/ranlib
+LLVM_MAJOR=""
+if [[ "$IS_CLANG" == "true" ]]; then
+  if echo "$COMP_VER" | grep -Eo 'version[[:space:]]+[0-9]+' >/dev/null 2>&1; then
+    LLVM_MAJOR="$(echo "$COMP_VER" | grep -Eo 'version[[:space:]]+[0-9]+' | awk '{print $2}')"
+  else
+    LLVM_MAJOR="$(echo "$COMP_VER" | grep -Eo '[0-9]+' | head -1 || true)"
+  fi
+fi
+
 # Trivial 64-bit compile test
 echo 'int main(){return 0;}' > .cfg_test.cpp
 "$COMPILER" -std=c++17 $ARCH_BITS ${ARCH_FLAG:+$ARCH_FLAG} -c .cfg_test.cpp -o .cfg_test.o >/dev/null 2>&1 \
@@ -149,7 +159,6 @@ if [[ "$ENABLE_LTO" != "off" ]]; then
       echo "note: ThinLTO requested with GCC; using full LTO instead."
     fi
     LTO_CXX="-flto"
-    # Prefer gold if available; plugin opt O3 for GCC LTO where supported
     if "$COMPILER" -fuse-ld=gold -Wl,-v >/dev/null 2>&1; then
       LDSEL="-fuse-ld=gold"
       LTO_LD="-flto -Wl,-plugin-opt=O3"
@@ -159,8 +168,21 @@ if [[ "$ENABLE_LTO" != "off" ]]; then
   fi
 fi
 
-# ar/ranlib for GCC+LTO archives
+# Archivers
 AR="ar"; RANLIB="ranlib"
+
+# Prefer matching LLVM tools with Clang+LTO to avoid plugin mismatches
+if [[ "$IS_CLANG" == "true" && "$ENABLE_LTO" != "off" ]]; then
+  if [[ -n "$LLVM_MAJOR" && -x "$(command -v llvm-ar-${LLVM_MAJOR})" && -x "$(command -v llvm-ranlib-${LLVM_MAJOR})" ]]; then
+    AR="llvm-ar-${LLVM_MAJOR}"
+    RANLIB="llvm-ranlib-${LLVM_MAJOR}"
+  elif command -v llvm-ar >/dev/null 2>&1 && command -v llvm-ranlib >/dev/null 2>&1; then
+    AR="llvm-ar"
+    RANLIB="llvm-ranlib"
+  fi
+fi
+
+# GCC + LTO: prefer gcc-ar/gcc-ranlib
 if [[ "$IS_GCC" == "true" && "$ENABLE_LTO" != "off" ]]; then
   command -v gcc-ar     >/dev/null 2>&1 && AR="gcc-ar"
   command -v gcc-ranlib >/dev/null 2>&1 && RANLIB="gcc-ranlib"
@@ -206,18 +228,25 @@ INSTALLNM := __INSTALLNM__
 LIB_TYPE   := __LIBTYPE__   # static | shared | both
 BUILD_BOTH := __BUILDBOTH__ # true | false
 
-# Sources
-SOURCES_ALL  := $(wildcard $(SRC_DIR)/*.cpp)
-SOURCES_LIB  := $(filter-out $(SRC_DIR)/main.cpp $(SRC_DIR)/testMatrix.cpp,$(SOURCES_ALL))
-OBJECTS_LIB  := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES_LIB))
+# Sources (single TU for the library)
+SOURCES_LIB  := $(SRC_DIR)/instantiations.cpp
+OBJECTS_LIB  := $(OBJ_DIR)/instantiations.o
+
+# Test sources stay separate
 SOURCES_TEST := $(SRC_DIR)/main.cpp $(SRC_DIR)/testMatrix.cpp
 OBJECTS_TEST := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES_TEST))
 
 # Artefacts
-STATIC_LIB      := $(LIB_DIR)/libBML.a
-SHARED_LIB      := $(LIB_DIR)/libBML$(SHLEXT)
-TEST_BIN_SHARED := $(BIN_DIR)/testProgram_shared
-TEST_BIN_STATIC := $(BIN_DIR)/testProgram_static
+STATIC_LIB    := $(LIB_DIR)/libBML.a
+SHARED_LIB    := $(LIB_DIR)/libBML$(SHLEXT)           # generic link name
+SHARED_SONAME := $(LIB_DIR)/libBML.so.$(SOVERSION)    # actual ELF soname file
+
+# Pick actual shared output per-OS
+ifeq ($(OS),Darwin)
+SHARED_OUT := $(SHARED_LIB)
+else
+SHARED_OUT := $(SHARED_SONAME)
+endif
 
 # rpath to find lib from bin/ at runtime
 ifeq ($(OS),Darwin)
@@ -229,21 +258,23 @@ endif
 # Which libs/tests to build by default
 ifeq ($(LIB_TYPE),shared)
 ALL_LIBS     := shared
-TEST_DEFAULT := $(TEST_BIN_SHARED)
+TEST_DEFAULT := $(BIN_DIR)/testProgram_shared
 else ifeq ($(LIB_TYPE),static)
 ALL_LIBS     := static
-TEST_DEFAULT := $(TEST_BIN_STATIC)
+TEST_DEFAULT := $(BIN_DIR)/testProgram_static
 else
 ALL_LIBS     := static shared
-TEST_DEFAULT := $(TEST_BIN_SHARED) $(TEST_BIN_STATIC)
+TEST_DEFAULT := $(BIN_DIR)/testProgram_shared $(BIN_DIR)/testProgram_static
 endif
 
 # Tests on by default (disable with: make NO_TESTS=1)
 NO_TESTS ?= 0
 
-# Flags
-CXXFLAGS  := $(CXXSTD) $(WARN) $(OPTS) $(BASEOPTS) $(LTOCXX) -I$(INC_DIR)
-LDFLAGS   := $(LTOLD) $(LDSEL)
+# --- Flags ---
+CXXFLAGS_ALL := $(CXXSTD) $(WARN) $(OPTS) $(BASEOPTS) $(LTOCXX) -I$(INC_DIR)
+CXXFLAGS     := $(CXXFLAGS_ALL)                        # tests etc.
+CXXFLAGS_LIB := $(CXXFLAGS_ALL) -fvisibility=default   # export lib symbols
+LDFLAGS      := $(LTOLD) $(LDSEL)
 
 # Phonies
 .PHONY: all static shared test check install uninstall clean clobber info
@@ -256,25 +287,39 @@ all: $(ALL_LIBS) check
 endif
 
 info:
-	@echo "CXXFLAGS = $(CXXFLAGS)"
-	@echo "LDFLAGS  = $(LDFLAGS)"
-	@echo "LIB_TYPE = $(LIB_TYPE)  (install both: $(BUILD_BOTH))"
-	@echo "SOURCES_LIB = $(SOURCES_LIB)"
+	@echo "CXXFLAGS     = $(CXXFLAGS)"
+	@echo "CXXFLAGS_LIB = $(CXXFLAGS_LIB)"
+	@echo "LDFLAGS      = $(LDFLAGS)"
+	@echo "LIB_TYPE     = $(LIB_TYPE)  (install both: $(BUILD_BOTH))"
+	@echo "SOURCES_LIB  = $(SOURCES_LIB)"
+	@echo "SHARED_OUT   = $(SHARED_OUT)"
 
 # Libraries
 static: $(STATIC_LIB)
-shared: $(SHARED_LIB)
+shared: $(SHARED_OUT)
 
 $(STATIC_LIB): $(OBJECTS_LIB)
 	@mkdir -p $(LIB_DIR)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
 
-$(SHARED_LIB): $(OBJECTS_LIB)
+# Build the shared library with correct output name and SONAME, plus Linux symlink.
+$(SHARED_OUT): $(OBJECTS_LIB)
 	@mkdir -p $(LIB_DIR)
 	$(CXX) $^ -o $@ $(LINKFLAGS) $(LDFLAGS) $(SONAMEFLG) $(INSTALLNM)
+ifeq ($(OS),Darwin)
+	@true
+else
+	@ln -sf libBML.so.$(SOVERSION) $(LIB_DIR)/libBML.so
+endif
 
 # Objects
+# Special rule: library TU with default visibility so symbols are exported.
+$(OBJ_DIR)/instantiations.o: $(SRC_DIR)/instantiations.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS_LIB) -fPIC -c $< -o $@
+
+# Generic rule for the rest
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -fPIC -c $< -o $@
@@ -282,11 +327,11 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 # Tests (shared/static)
 test: check
 
-$(TEST_BIN_SHARED): $(OBJECTS_TEST) $(SHARED_LIB)
+$(BIN_DIR)/testProgram_shared: $(OBJECTS_TEST) $(SHARED_OUT)
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(OBJECTS_TEST) -L$(LIB_DIR) -lBML $(RPATH_FLAG) $(LDFLAGS) -o $@
 
-$(TEST_BIN_STATIC): $(OBJECTS_TEST) $(STATIC_LIB)
+$(BIN_DIR)/testProgram_static: $(OBJECTS_TEST) $(STATIC_LIB)
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(OBJECTS_TEST) $(STATIC_LIB) $(LDFLAGS) -o $@
 
@@ -301,21 +346,21 @@ install: $(ALL_LIBS)
 	@mkdir -p $(PREFIX)/lib $(PREFIX)/include
 ifeq ($(BUILD_BOTH),true)
 	@if [ -f "$(STATIC_LIB)" ]; then cp "$(STATIC_LIB)" "$(PREFIX)/lib/"; fi
-	@if [ -f "$(SHARED_LIB)" ]; then \
+	@if [ -f "$(SHARED_OUT)" ]; then \
 	  if [ "$(OS)" = "Darwin" ]; then \
-	    cp "$(SHARED_LIB)" "$(PREFIX)/lib/"; \
+	    cp "$(SHARED_OUT)" "$(PREFIX)/lib/"; \
 	  else \
-	    cp "$(SHARED_LIB)" "$(PREFIX)/lib/libBML.so.$(SOVERSION)"; \
+	    cp "$(SHARED_SONAME)" "$(PREFIX)/lib/"; \
 	    ln -sf "libBML.so.$(SOVERSION)" "$(PREFIX)/lib/libBML.so"; \
 	  fi \
 	fi
 else
 	@if [ "$(LIB_TYPE)" = "static" ] && [ -f "$(STATIC_LIB)" ]; then cp "$(STATIC_LIB)" "$(PREFIX)/lib/"; fi
-	@if [ "$(LIB_TYPE)" = "shared" ] && [ -f "$(SHARED_LIB)" ]; then \
+	@if [ "$(LIB_TYPE)" = "shared" ] && [ -f "$(SHARED_OUT)" ]; then \
 	  if [ "$(OS)" = "Darwin" ]; then \
-	    cp "$(SHARED_LIB)" "$(PREFIX)/lib/"; \
+	    cp "$(SHARED_OUT)" "$(PREFIX)/lib/"; \
 	  else \
-	    cp "$(SHARED_LIB)" "$(PREFIX)/lib/libBML.so.$(SOVERSION)"; \
+	    cp "$(SHARED_SONAME)" "$(PREFIX)/lib/"; \
 	    ln -sf "libBML.so.$(SOVERSION)" "$(PREFIX)/lib/libBML.so"; \
 	  fi \
 	fi
