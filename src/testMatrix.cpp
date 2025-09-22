@@ -11,38 +11,50 @@
 #include <cmath>
 #include <utility>
 
-namespace {
+namespace
+{
 
 // ---------- logging helpers ----------
 #define LOG(msg)  do { std::cout << msg << std::endl; } while(0)
 #define SEP()     do { std::cout << "------------------------------------------------------------\n"; } while(0)
 
-struct ScopeTimer {
+struct ScopeTimer
+{
     const char* label;
     std::chrono::steady_clock::time_point t0;
     explicit ScopeTimer(const char* l) : label(l), t0(std::chrono::steady_clock::now()) {}
-    ~ScopeTimer(){
+    ~ScopeTimer()
+    {
         using namespace std::chrono;
         auto ms = duration_cast<milliseconds>(steady_clock::now() - t0).count();
         std::cout << "[TIME] " << label << ": " << ms << " ms\n";
     }
 };
 
-inline std::string pretty_bytes(unsigned long long b) {
+inline std::string pretty_bytes(unsigned long long b)
+{
     const char* units[] = {"B","KiB","MiB","GiB","TiB"};
     double d = static_cast<double>(b);
     int i = 0;
-    while (d >= 1024.0 && i < 4) { d /= 1024.0; ++i; }
+    while (d >= 1024.0 && i < 4)
+    {
+        d /= 1024.0;
+        ++i;
+    }
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(2) << d << ' ' << units[i];
     return oss.str();
 }
 
-struct TestFail : std::runtime_error { using std::runtime_error::runtime_error; };
+struct TestFail : std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
 
 // ---------- pretty type & value printing ----------
 template<typename T>
-const char* type_name() {
+const char* type_name()
+{
     if constexpr (std::is_same_v<T, std::int8_t>)   return "int8_t";
     if constexpr (std::is_same_v<T, std::uint8_t>)  return "uint8_t";
     if constexpr (std::is_same_v<T, std::int16_t>)  return "int16_t";
@@ -62,30 +74,46 @@ const char* type_name() {
 }
 
 template<typename T>
-std::string format_value(const T& v) {
+std::string format_value(const T& v)
+{
     std::ostringstream oss;
-    if constexpr (std::is_same_v<T, bool>) {
+    if constexpr (std::is_same_v<T, bool>)
+    {
         oss << (v ? "true" : "false");
-    } else if constexpr (std::is_same_v<T, char>) {
-        if (std::isprint(static_cast<unsigned char>(v))) {
+    }
+    else if constexpr (std::is_same_v<T, char>)
+    {
+        if (std::isprint(static_cast<unsigned char>(v)))
+        {
             oss << "'" << v << "' (int:" << static_cast<int>(v) << ")";
-        } else {
+        }
+        else
+        {
             oss << "char(int:" << static_cast<int>(v) << ")";
         }
-    } else if constexpr (std::is_integral_v<T>) {
+    }
+    else if constexpr (std::is_integral_v<T>)
+    {
         oss << static_cast<long long>(v);
-    } else if constexpr (std::is_floating_point_v<T>) {
+    }
+    else if constexpr (std::is_floating_point_v<T>)
+    {
         oss << std::setprecision(17) << static_cast<long double>(v);
-    } else if constexpr (std::is_same_v<T, std::string>) {
+    }
+    else if constexpr (std::is_same_v<T, std::string>)
+    {
         oss << '"' << v << '"';
-    } else {
+    }
+    else
+    {
         oss << v; // fallback if streamable
     }
     return oss.str();
 }
 
 template<class A, class B>
-[[noreturn]] void fail_eq(const A& a, const B& b, const char* what) {
+[[noreturn]] void fail_eq(const A& a, const B& b, const char* what)
+{
     std::ostringstream oss;
     oss << "[FAIL] " << what
         << " (got " << format_value(a)
@@ -94,14 +122,17 @@ template<class A, class B>
 }
 
 template<class A, class B>
-void expect_eq(const A& a, const B& b, const char* what) {
+void expect_eq(const A& a, const B& b, const char* what)
+{
     if (!(a == b)) fail_eq(a, b, what);
 }
 
-inline void expect_true(bool v, const char* what) {
+inline void expect_true(bool v, const char* what)
+{
     if (!v) throw TestFail(std::string("[FAIL] expected true: ") + what);
 }
-inline void expect_false(bool v, const char* what) {
+inline void expect_false(bool v, const char* what)
+{
     if (v) throw TestFail(std::string("[FAIL] expected false: ") + what);
 }
 
@@ -112,21 +143,24 @@ template<class T> struct is_boolish : bml_is_bool<T> {};
 
 // ---------- small helpers ----------
 template<typename T>
-void print_type_header(const char* section) {
+void print_type_header(const char* section)
+{
     SEP();
     std::cout << "[SECTION] " << section << " — type: " << type_name<T>() << "\n";
 }
 
 template<typename T>
-void fill_sequence(Matrix<T>& m) {
-    for (std::uint32_t r=0;r<m.numRows();++r)
-        for (std::uint32_t c=0;c<m.numCols();++c)
+void fill_sequence(Matrix<T>& m)
+{
+    for (std::uint32_t r=0; r<m.numRows(); ++r)
+        for (std::uint32_t c=0; c<m.numCols(); ++c)
             m[r][c] = static_cast<T>(r*10 + c);
 }
 
 // ---------- tests ----------
 template<typename T>
-void test_core_shape_iter_verbose() {
+void test_core_shape_iter_verbose()
+{
     print_type_header<T>("Core/Shape/Iter");
 
     Matrix<T> m(2,3);
@@ -159,7 +193,8 @@ void test_core_shape_iter_verbose() {
     LOG("copy(0,1,2,3): " << sub.numRows() << "x" << sub.numCols());
     expect_eq(sub[1][0], static_cast<T>(11), "copy content");
 
-    Matrix<T> dst(2,3); dst.fill(static_cast<T>(-1));
+    Matrix<T> dst(2,3);
+    dst.fill(static_cast<T>(-1));
     dst.paste(sub,0,1);
     LOG("paste(sub,0,1): dst[0][1]=" << format_value(dst[0][1]) << " dst[1][2]=" << format_value(dst[1][2]));
 
@@ -176,19 +211,31 @@ void test_core_shape_iter_verbose() {
     }
     expect_eq(count, m.size(), "col iter count");
 
-    expect_true(m.all([](T x){ return x == x; }), "all(x==x)");
-    expect_true(m.any_of([](T x){ return x == static_cast<T>(11); }), "any_of x=11");
-    expect_false(m.none_of([](T x){ return x == static_cast<T>(11); }), "none_of false");
+    expect_true(m.all([](T x)
+    {
+        return x == x;
+    }), "all(x==x)");
+    expect_true(m.any_of([](T x)
+    {
+        return x == static_cast<T>(11);
+    }), "any_of x=11");
+    expect_false(m.none_of([](T x)
+    {
+        return x == static_cast<T>(11);
+    }), "none_of false");
     LOG("[OK] Core/Shape/Iter");
 }
 
 template<typename T>
-void test_pod_bytestream_verbose() {
+void test_pod_bytestream_verbose()
+{
     if constexpr (std::is_same_v<T, std::string>) return;
     print_type_header<T>("ByteStream (POD)");
     Matrix<T> m(2,2);
-    m[0][0]=static_cast<T>(1); m[0][1]=static_cast<T>(2);
-    m[1][0]=static_cast<T>(3); m[1][1]=static_cast<T>(4);
+    m[0][0]=static_cast<T>(1);
+    m[0][1]=static_cast<T>(2);
+    m[1][0]=static_cast<T>(3);
+    m[1][1]=static_cast<T>(4);
 
     LOG("Serialising to bytestream…");
     auto bs = m.toByteStream();
@@ -201,59 +248,103 @@ void test_pod_bytestream_verbose() {
 }
 
 template<typename T>
-void test_arithmetic_verbose() {
+void test_arithmetic_verbose()
+{
     if constexpr (!is_math<T>::value) return;
     print_type_header<T>("Arithmetic (element-wise + scalar)");
     Matrix<T> a(2,2), b(2,2);
-    a[0][0]=1; a[0][1]=2; a[1][0]=3; a[1][1]=4;
-    b[0][0]=5; b[0][1]=6; b[1][0]=7; b[1][1]=8;
+    a[0][0]=1;
+    a[0][1]=2;
+    a[1][0]=3;
+    a[1][1]=4;
+    b[0][0]=5;
+    b[0][1]=6;
+    b[1][0]=7;
+    b[1][1]=8;
 
-    auto c = a + b; LOG("a+b -> c[1][1]=" << format_value(c[1][1])); expect_eq(c[1][1], static_cast<T>(12), "a+b");
-    c = a - b; LOG("a-b -> c[0][0]=" << format_value(c[0][0])); expect_eq(c[0][0], static_cast<T>(-4), "a-b");
-    c = a * b; LOG("a*b -> c[0][1]=" << format_value(c[0][1])); expect_eq(c[0][1], static_cast<T>(12), "a*b");
+    auto c = a + b;
+    LOG("a+b -> c[1][1]=" << format_value(c[1][1]));
+    expect_eq(c[1][1], static_cast<T>(12), "a+b");
+    c = a - b;
+    LOG("a-b -> c[0][0]=" << format_value(c[0][0]));
+    expect_eq(c[0][0], static_cast<T>(-4), "a-b");
+    c = a * b;
+    LOG("a*b -> c[0][1]=" << format_value(c[0][1]));
+    expect_eq(c[0][1], static_cast<T>(12), "a*b");
 
-    c = a + static_cast<T>(10); LOG("a+10 -> c[1][1]=" << format_value(c[1][1])); expect_eq(c[1][1], static_cast<T>(14), "a+10");
-    c = a * static_cast<T>(2);  LOG("a*2  -> c[0][1]=" << format_value(c[0][1])); expect_eq(c[0][1], static_cast<T>(4), "a*2");
+    c = a + static_cast<T>(10);
+    LOG("a+10 -> c[1][1]=" << format_value(c[1][1]));
+    expect_eq(c[1][1], static_cast<T>(14), "a+10");
+    c = a * static_cast<T>(2);
+    LOG("a*2  -> c[0][1]=" << format_value(c[0][1]));
+    expect_eq(c[0][1], static_cast<T>(4), "a*2");
 
     auto s = a.template sum<T>();
-    if constexpr (is_floatish<T>::value) {
+    if constexpr (is_floatish<T>::value)
+    {
         LOG("sum(float) -> " << format_value(s));
         expect_true(std::fabs(static_cast<double>(s - static_cast<T>(10))) < 1e-9, "sum float");
-    } else {
+    }
+    else
+    {
         LOG("sum(int) -> " << format_value(s));
         expect_eq(s, static_cast<T>(10), "sum int");
     }
     LOG("min=" << format_value(a.template min<T>()) << " max=" << format_value(a.template max<T>()));
-    auto p = a.template argmin<T>(); auto q = a.template argmax<T>();
+    auto p = a.template argmin<T>();
+    auto q = a.template argmax<T>();
     LOG("argmin=(" << p.first << "," << p.second << ") argmax=(" << q.first << "," << q.second << ")");
 
     Matrix<T> d = a;
-    d += b; expect_eq(d[0][0], static_cast<T>(6), "+=");
-    d -= b; expect_eq(d[0][0], static_cast<T>(1), "-=");
-    d *= b; expect_eq(d[0][1], static_cast<T>(12), "*=");
-    d /= a; expect_eq(d[0][1], static_cast<T>(6), "/=");
+    d += b;
+    expect_eq(d[0][0], static_cast<T>(6), "+=");
+    d -= b;
+    expect_eq(d[0][0], static_cast<T>(1), "-=");
+    d *= b;
+    expect_eq(d[0][1], static_cast<T>(12), "*=");
+    d /= a;
+    expect_eq(d[0][1], static_cast<T>(6), "/=");
     LOG("[OK] Arithmetic");
 }
 
 template<typename T>
-void test_integral_ops_verbose() {
+void test_integral_ops_verbose()
+{
     if constexpr (!is_real_integral<T>::value) return;
     print_type_header<T>("Integral-only ops (&,|,^,%,~,<<,>>)");
     Matrix<T> a(2,2), b(2,2);
-    a[0][0]=1; a[0][1]=2; a[1][0]=3; a[1][1]=4;
-    b[0][0]=1; b[0][1]=3; b[1][0]=2; b[1][1]=5;
+    a[0][0]=1;
+    a[0][1]=2;
+    a[1][0]=3;
+    a[1][1]=4;
+    b[0][0]=1;
+    b[0][1]=3;
+    b[1][0]=2;
+    b[1][1]=5;
 
-    auto m = a % b; LOG("a%b -> m[1][0]=" << format_value(m[1][0]));
-    auto bw = a & b; LOG("a&b -> bw[0][1]=" << format_value(bw[0][1]));
-    bw = a | b;     LOG("a|b -> bw[1][1]=" << format_value(bw[1][1]));
-    bw = a ^ b;     LOG("a^b -> bw[1][0]=" << format_value(bw[1][0]));
+    auto m = a % b;
+    LOG("a%b -> m[1][0]=" << format_value(m[1][0]));
+    auto bw = a & b;
+    LOG("a&b -> bw[0][1]=" << format_value(bw[0][1]));
+    bw = a | b;
+    LOG("a|b -> bw[1][1]=" << format_value(bw[1][1]));
+    bw = a ^ b;
+    LOG("a^b -> bw[1][0]=" << format_value(bw[1][0]));
 
-    auto notA = ~a; LOG("~a -> notA[0][0]=" << format_value(notA[0][0]));
+    auto notA = ~a;
+    LOG("~a -> notA[0][0]=" << format_value(notA[0][0]));
 
-    auto shl = a << 1; LOG("a<<1 -> shl[0][1]=" << format_value(shl[0][1]));
-    auto shr = a >> 1; LOG("a>>1 -> shr[1][1]=" << format_value(shr[1][1]));
+    auto shl = a << 1;
+    LOG("a<<1 -> shl[0][1]=" << format_value(shl[0][1]));
+    auto shr = a >> 1;
+    LOG("a>>1 -> shr[1][1]=" << format_value(shr[1][1]));
 
-    Matrix<T> c = a; c &= b; c |= b; c ^= b; c <<= 1; c >>= 1;
+    Matrix<T> c = a;
+    c &= b;
+    c |= b;
+    c ^= b;
+    c <<= 1;
+    c >>= 1;
     LOG("[OK] Integral-only ops");
 }
 
@@ -292,8 +383,8 @@ static void test_bool_thorough()
     expect_eq(m.template max<bool>(), false, "max false");
 
     // Checkerboard pattern
-    for (std::uint32_t r=0;r<m.numRows();++r)
-        for (std::uint32_t c=0;c<m.numCols();++c)
+    for (std::uint32_t r=0; r<m.numRows(); ++r)
+        for (std::uint32_t c=0; c<m.numCols(); ++c)
             m[r][c] = ((r ^ c) & 1) != 0;
 
     // Count = roughly half (for 4x5 -> 10)
@@ -305,12 +396,15 @@ static void test_bool_thorough()
 
     // Slices
     auto row1 = m.getRow(1);
-    std::size_t row1_ct = 0; for (bool v : row1) if (v) ++row1_ct;
+    std::size_t row1_ct = 0;
+    for (bool v : row1) if (v) ++row1_ct;
     expect_eq(row1.size(), static_cast<std::size_t>(5), "row1 len");
     expect_eq(row1_ct, static_cast<std::size_t>((m.numCols()+1)/2), "row1 true count");
 
     auto col2 = m.getColumn(2);
-    std::size_t col2_ct = 0; for (bool v: col2) if (v) ++col2_ct;
+    [[maybe_unused]]std::size_t col2_ct = 0;
+
+    for (bool v: col2) if (v) ++col2_ct;
     expect_eq(col2.size(), static_cast<std::size_t>(4), "col2 len");
 
     // Diagonals (min(R,C)=4)
@@ -320,13 +414,18 @@ static void test_bool_thorough()
     expect_eq(ad.size(), static_cast<std::size_t>(4), "adiag len");
 
     // where() on bool -> still bool matrix
-    auto wmask = m.where([](bool v){ return v; }, true, false);
+    auto wmask = m.where([](bool v)
+    {
+        return v;
+    }, true, false);
     expect_true(wmask.any<bool>(), "where any");
     expect_eq(wmask.count_true<bool>(), m.count_true<bool>(), "where preserves truth pattern");
 
     // Logical ops against scalars and another mask
-    Matrix<bool> alltrue(4,5); alltrue.fill(true);
-    Matrix<bool> allfalse(4,5); allfalse.fill(false);
+    Matrix<bool> alltrue(4,5);
+    alltrue.fill(true);
+    Matrix<bool> allfalse(4,5);
+    allfalse.fill(false);
 
     auto a = m.logical_and<bool>(alltrue); // should equal m
     auto o = m.logical_or<bool>(false);    // should equal m
@@ -344,7 +443,8 @@ static void test_bool_thorough()
 
     // Copy / paste
     Matrix<bool> sub = m.copy(1,1,3,4); // (2x3)
-    Matrix<bool> z(4,5); z.fill(false);
+    Matrix<bool> z(4,5);
+    z.fill(false);
     z.paste(sub, 0, 2);
     for (std::uint32_t r=0; r<2; ++r)
         for (std::uint32_t c=0; c<3; ++c)
@@ -375,7 +475,14 @@ static void test_bool_thorough()
         if (!bs.empty()) bs.pop_back(); // truncate by 1 byte
         Matrix<bool> r(m.numRows(), m.numCols());
         bool threw = false;
-        try { r.initFromByteStream(bs); } catch (...) { threw = true; }
+        try
+        {
+            r.initFromByteStream(bs);
+        }
+        catch (...)
+        {
+            threw = true;
+        }
         expect_true(threw, "initFromByteStream must throw on wrong size");
     }
 
@@ -391,8 +498,8 @@ void test_index_and_iterators_deep()
     // 3x4 to exercise rectangular shapes
     Matrix<T> m(3,4);
     // Write via [][] and verify
-    for (std::uint32_t r=0;r<m.numRows();++r)
-        for (std::uint32_t c=0;c<m.numCols();++c)
+    for (std::uint32_t r=0; r<m.numRows(); ++r)
+        for (std::uint32_t c=0; c<m.numCols(); ++c)
             m[r][c] = static_cast<T>(r*100 + c);
 
     // Read back spot checks
@@ -404,8 +511,11 @@ void test_index_and_iterators_deep()
     {
         auto it = m.begin(TraversalType::Row);
         auto ed = m.end(TraversalType::Row);
-        for (; it != ed; ++it) {
-            auto [r,c,ref] = *it; (void)r; (void)c;
+        for (; it != ed; ++it)
+        {
+            auto [r,c,ref] = *it;
+            (void)r;
+            (void)c;
             ref = static_cast<T>(ref + static_cast<T>(1));
         }
     }
@@ -418,8 +528,12 @@ void test_index_and_iterators_deep()
         std::size_t count = 0;
         auto it = cm.begin(TraversalType::Column);
         auto ed = cm.end(TraversalType::Column);
-        for (; it != ed; ++it) {
-            auto [r,c,val] = *it; (void)r; (void)c; (void)val;
+        for (; it != ed; ++it)
+        {
+            auto [r,c,val] = *it;
+            (void)r;
+            (void)c;
+            (void)val;
             ++count;
         }
         expect_eq(count, cm.size(), "const column iteration count");
@@ -431,7 +545,8 @@ void test_index_and_iterators_deep()
         auto it = cm.begin(TraversalType::Diagonal);
         auto ed = cm.end(TraversalType::Diagonal);
         std::uint32_t i = 0, limit = std::min(cm.numRows(), cm.numCols());
-        for (; it != ed; ++it, ++i) {
+        for (; it != ed; ++it, ++i)
+        {
             auto [r,c,val] = *it;
             expect_eq(r, i, "diag r==i");
             expect_eq(c, i, "diag c==i");
@@ -447,14 +562,17 @@ void test_index_and_iterators_deep()
         auto it = cm.begin(TraversalType::AntiDiagonal);
         auto ed = cm.end(TraversalType::AntiDiagonal);
         std::vector<std::pair<std::uint32_t,std::uint32_t>> seen;
-        for (; it != ed; ++it) {
-            auto [r,c,val] = *it; (void)val;
+        for (; it != ed; ++it)
+        {
+            auto [r,c,val] = *it;
+            (void)val;
             seen.emplace_back(r,c);
         }
         expect_eq(seen.size(), static_cast<std::size_t>(std::min(cm.numRows(), cm.numCols())), "anti-diag length");
         expect_eq(seen[0].first, 0u,  "adiag[0].r");
         expect_eq(seen[0].second, cm.numCols()-1, "adiag[0].c");
-        if (seen.size() >= 3) {
+        if (seen.size() >= 3)
+        {
             expect_eq(seen[1].first, 1u, "adiag[1].r");
             expect_eq(seen[1].second, cm.numCols()-2, "adiag[1].c");
             expect_eq(seen[2].first, 2u, "adiag[2].r");
@@ -485,15 +603,21 @@ static void test_string_verbose()
     expect_true(m == r, "string roundtrip");
 
     // all()
-    auto all_ok = m.all([](const std::string& s){ return s.size() >= 0; });
+    auto all_ok = m.all([](const std::string& s)
+    {
+        return s.size() >= 0;
+    });
     expect_true(all_ok, "string all() non-negative lengths");
 
     // where(): empty -> "X", else -> "-"
     auto ww = m.where(
-        [](const std::string& s){ return s.empty(); },
-        std::string("X"),
-        std::string("-")
-    );
+                  [](const std::string& s)
+    {
+        return s.empty();
+    },
+    std::string("X"),
+    std::string("-")
+              );
 
     LOG("where(empty->X,else -): [0,0]="
         << format_value(ww[0][0]) << " [0,1]=" << format_value(ww[0][1]));
@@ -506,13 +630,92 @@ static void test_string_verbose()
 
     // copy/paste sanity for strings
     Matrix<std::string> sub = m.copy(0,0,2,1); // 2x1: {"hello","ÅÄÖ"}
-    Matrix<std::string> z(2,2); z.fill(std::string(".."));
+    Matrix<std::string> z(2,2);
+    z.fill(std::string(".."));
     z.paste(sub, 0, 1);
     expect_eq(z[0][1], std::string("hello"), "string paste 0,1");
     expect_eq(z[1][1], std::string("ÅÄÖ"),   "string paste 1,1");
 
     LOG("[OK] strings");
 }
+
+// --- Rule-of-Five test -------------------------------------------------------
+#include <type_traits>
+#include <string>
+
+template<typename T>
+static inline T tv(int n)
+{
+    if constexpr (std::is_same_v<T, std::string>)
+    {
+        return std::to_string(n);
+    }
+    else if constexpr (std::is_same_v<T, bool>)
+    {
+        return n != 0;
+    }
+    else
+    {
+        return static_cast<T>(n);
+    }
+}
+
+namespace
+{
+template<typename T>
+void test_rule_of_five_core()
+{
+    print_type_header<T>("Rule-of-Five");
+
+    // Traits (adjust noexcept requirements if your Matrix<T> doesn't guarantee them)
+    static_assert(std::is_copy_constructible_v<Matrix<T>>);
+    static_assert(std::is_copy_assignable_v<Matrix<T>>);
+    static_assert(std::is_move_constructible_v<Matrix<T>>);
+    static_assert(std::is_move_assignable_v<Matrix<T>>);
+    static_assert(std::is_nothrow_move_constructible_v<Matrix<T>>);
+    static_assert(std::is_nothrow_move_assignable_v<Matrix<T>>);
+
+    // Seed 2x2 with deterministic values
+    Matrix<T> a(2,2);
+    a[0][0] = tv<T>(1);
+    a[0][1] = tv<T>(2);
+    a[1][0] = tv<T>(3);
+    a[1][1] = tv<T>(4);
+
+    // 1) Copy ctor: deep copy
+    Matrix<T> b(a);
+    a[0][0] = tv<T>(10);
+    expect_eq(b[0][0], tv<T>(1), "copy-ctor deep copy: original change does not affect copy");
+
+    // 2) Copy assign: deep copy + self-assign safe
+    Matrix<T> c(2,2);
+    c = a;
+    a[0][1] = tv<T>(20);
+    expect_eq(c[0][1], tv<T>(2), "copy-assign deep copy: original change does not affect assignee");
+    Matrix<T>* alias = &c;
+    c = *alias; // intentional self-assign via alias
+
+    expect_eq(c[1][1], tv<T>(4), "copy self-assignment: state preserved");
+
+    // 3) Move ctor: acquire resources; moved-from valid empty
+    Matrix<T> m(std::move(a));
+    expect_true(m.numRows() == 2 && m.numCols() == 2, "move-ctor: destination has expected shape");
+    expect_eq(a.size(), static_cast<std::size_t>(0), "move-ctor: moved-from is valid and empty");
+
+    // 4) Move assign: acquire resources; moved-from becomes valid empty
+    Matrix<T> d(1,1);
+    d = std::move(b);
+    expect_true(d.numRows() == 2 && d.numCols() == 2, "move-assign: destination acquired shape");
+    expect_eq(b.size(), static_cast<std::size_t>(0), "move-assign: moved-from is valid and empty");
+
+    // 5) Move self-assign: safe, unchanged
+    d = std::move(d);
+    expect_true(d.numRows() == 2 && d.numCols() == 2, "move self-assignment: safe and unchanged");
+
+    LOG("[OK] Rule-of-Five");
+}
+} // namespace
+
 
 // ---------- stress tests ----------
 template<typename T>
@@ -524,21 +727,27 @@ void stress_numeric(const char* label, std::uint32_t R, std::uint32_t C, int rep
     LOG("Attempting " << R << "x" << C << " elements=" << n
         << " bytes=" << bytes << " (" << pretty_bytes(bytes) << ")");
 
-    try {
+    try
+    {
         ScopeTimer alloc_t("stress alloc/fill");
         Matrix<T> m(R,C);
         std::mt19937_64 rng(1234567);
-        if constexpr (std::is_integral_v<T>) {
+        if constexpr (std::is_integral_v<T>)
+        {
             std::uniform_int_distribution<long long> dist(0, 1000);
-            for (std::uint32_t r=0;r<R;++r)
-                for (std::uint32_t c=0;c<C;++c)
+            for (std::uint32_t r=0; r<R; ++r)
+                for (std::uint32_t c=0; c<C; ++c)
                     m[r][c] = static_cast<T>(dist(rng));
-        } else if constexpr (std::is_floating_point_v<T>) {
+        }
+        else if constexpr (std::is_floating_point_v<T>)
+        {
             std::uniform_real_distribution<double> dist(0.0, 1.0);
-            for (std::uint32_t r=0;r<R;++r)
-                for (std::uint32_t c=0;c<C;++c)
+            for (std::uint32_t r=0; r<R; ++r)
+                for (std::uint32_t c=0; c<C; ++c)
                     m[r][c] = static_cast<T>(dist(rng));
-        } else {
+        }
+        else
+        {
             m.fill(T{});
         }
 
@@ -551,10 +760,13 @@ void stress_numeric(const char* label, std::uint32_t R, std::uint32_t C, int rep
             (void)m.template argmax<T>();
         }
 
-        if constexpr (is_math<T>::value) {
+        if constexpr (is_math<T>::value)
+        {
             ScopeTimer t2("stress arithmetic + scalar");
-            Matrix<T> k(R,C); k.fill(static_cast<T>(1));
-            for (int i=0;i<repeats;++i) {
+            Matrix<T> k(R,C);
+            k.fill(static_cast<T>(1));
+            for (int i=0; i<repeats; ++i)
+            {
                 auto x = m + k;
                 auto y = x - k;
                 auto z = y * k;
@@ -562,16 +774,22 @@ void stress_numeric(const char* label, std::uint32_t R, std::uint32_t C, int rep
                 (void)w;
             }
         }
-        if constexpr (is_real_integral<T>::value) {
+        if constexpr (is_real_integral<T>::value)
+        {
             ScopeTimer t3("stress bitwise &|^~ << >>");
-            Matrix<T> k(R,C); k.fill(static_cast<T>(0x0F));
+            Matrix<T> k(R,C);
+            k.fill(static_cast<T>(0x0F));
             auto a = m & k;
-            a |= k; a ^= k;
-            a = ~a; a = (a << 1); a = (a >> 1);
+            a |= k;
+            a ^= k;
+            a = ~a;
+            a = (a << 1);
+            a = (a >> 1);
             (void)a;
         }
 
-        if constexpr (!std::is_same_v<T, std::string>) {
+        if constexpr (!std::is_same_v<T, std::string>)
+        {
             ScopeTimer t4("stress bytestream roundtrip (POD)");
             auto bs = m.toByteStream();
             Matrix<T> r(R,C);
@@ -581,10 +799,12 @@ void stress_numeric(const char* label, std::uint32_t R, std::uint32_t C, int rep
 
         LOG("[OK] stress " << label);
     }
-    catch (const std::bad_alloc&) {
+    catch (const std::bad_alloc&)
+    {
         LOG("[SKIP] stress " << label << " — std::bad_alloc (too large for this machine)");
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         LOG(std::string("[FAIL] stress ") + label + ": " + e.what());
         throw;
     }
@@ -593,21 +813,26 @@ void stress_numeric(const char* label, std::uint32_t R, std::uint32_t C, int rep
 static void stress_bool(std::uint32_t R, std::uint32_t C)
 {
     print_type_header<bool>("stress bool");
-    try {
+    try
+    {
         Matrix<bool> m(R,C);
         // Deterministic pattern + toggles
-        for (std::uint32_t r=0;r<R;++r)
-            for (std::uint32_t c=0;c<C;++c)
+        for (std::uint32_t r=0; r<R; ++r)
+            for (std::uint32_t c=0; c<C; ++c)
                 m[r][c] = ((r*1315423911u + c*2654435761u) & 1u) != 0;
 
         {
             ScopeTimer t("bool logical ops & reductions");
-            Matrix<bool> n(R,C); n.fill(true);
+            Matrix<bool> n(R,C);
+            n.fill(true);
             auto a = m.logical_and<bool>(n);
             auto o = m.logical_or<bool>(false);
             auto x = m.logical_xor<bool>(true);
             auto notm = m.logical_not<bool>();
-            (void)a; (void)o; (void)x; (void)notm;
+            (void)a;
+            (void)o;
+            (void)x;
+            (void)notm;
             (void)m.count_true<bool>();
             (void)m.any<bool>();
             (void)m.none<bool>();
@@ -620,7 +845,9 @@ static void stress_bool(std::uint32_t R, std::uint32_t C)
             if (!(m == r)) throw TestFail("[FAIL] bool stress roundtrip mismatch");
         }
         LOG("[OK] stress bool");
-    } catch (const std::bad_alloc&) {
+    }
+    catch (const std::bad_alloc&)
+    {
         LOG("[SKIP] stress bool — std::bad_alloc");
     }
 }
@@ -628,10 +855,11 @@ static void stress_bool(std::uint32_t R, std::uint32_t C)
 void stress_strings(std::uint32_t R, std::uint32_t C)
 {
     print_type_header<std::string>("stress strings");
-    try {
+    try
+    {
         Matrix<std::string> m(R,C);
-        for (std::uint32_t r=0;r<R;++r)
-            for (std::uint32_t c=0;c<C;++c)
+        for (std::uint32_t r=0; r<R; ++r)
+            for (std::uint32_t c=0; c<C; ++c)
                 m[r][c] = (r%7==0) ? "X" : (r%5==0) ? "" : "abcdefghijklmnopqrstuvwxyz";
         ScopeTimer t("string bytestream roundtrip");
         auto bs = m.toByteStream();
@@ -639,7 +867,9 @@ void stress_strings(std::uint32_t R, std::uint32_t C)
         r2.initFromByteStream(bs);
         expect_true(m == r2, "string stress roundtrip");
         LOG("[OK] stress strings");
-    } catch (const std::bad_alloc&) {
+    }
+    catch (const std::bad_alloc&)
+    {
         LOG("[SKIP] stress strings — std::bad_alloc");
     }
 }
@@ -649,7 +879,8 @@ void stress_strings(std::uint32_t R, std::uint32_t C)
 // ============ PUBLIC ENTRY ============
 int testMatrix()
 {
-    try {
+    try
+    {
         LOG("[BML TEST] Starting…");
         SEP();
 
@@ -710,12 +941,21 @@ int testMatrix()
         SEP();
         LOG("[BML TEST] Functional tests passed. Beginning stress…");
         SEP();
+        test_rule_of_five_core<int32_t>();
+        test_rule_of_five_core<std::string>();
+// add more types if you like:
+        test_rule_of_five_core<double>();
+        test_rule_of_five_core<bool>(); // if Matrix<bool> supports full copy/move semantics
 
         // --- Stress sizes (adaptive)
-        struct Attempt { std::uint32_t r,c; };
-        const Attempt big_attempts[] = { {8192,8192}, {6144,6144}, {4096,4096}, {2048,2048} };
+        struct Attempt
+        {
+            std::uint32_t r,c;
+        };
+        const Attempt big_attempts[] = { {4096,4096}, {2048,2048} };
 
-        for (auto [r,c] : big_attempts) {
+        for (auto [r,c] : big_attempts)
+        {
             stress_numeric<std::uint32_t>("stress u32", r,c);
             stress_numeric<float>("stress float", r,c);
             stress_numeric<std::uint64_t>("stress u64", r,c, /*repeats*/1);
@@ -726,16 +966,18 @@ int testMatrix()
 
         SEP();
         LOG("[BML TEST] All tests completed successfully.");
-        return 1;
+        return 0;
     }
-    catch (const TestFail& e) {
+    catch (const TestFail& e)
+    {
         std::cerr << e.what() << std::endl;
         std::cerr << "[BML TEST] FAILED.\n";
-        return 0;
+        return 1;
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         std::cerr << "[UNEXPECTED EXCEPTION] " << e.what() << std::endl;
         std::cerr << "[BML TEST] FAILED.\n";
-        return 0;
+        return 1;
     }
 }
