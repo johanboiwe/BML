@@ -73,6 +73,8 @@ T* RowView<T>::data() const noexcept
 
 BoolRef::BoolRef(std::uint8_t* p) noexcept : p_(p) {}
 
+BoolRef::BoolRef(const BoolRef& other) noexcept: p_(other.p_){}
+
 BoolRef::operator bool() const noexcept { return *p_ != 0; }
 
 BoolRef& BoolRef::operator=(bool v) noexcept {
