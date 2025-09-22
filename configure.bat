@@ -1,137 +1,237 @@
 @echo off
 SETLOCAL ENABLEDELAYEDEXPANSION
 
-REM Default settings
-set "LIB_TYPE=static"
-set "ENABLE_DEBUG=false"
-set "COMPILER=cl"  REM Default compiler
-set "ARCH=x64"  REM Default to 64-bit architecture
-set "PREFIX=C:\Program Files\MyLibrary"  REM Default installation directory
-set "INSTALL_BOTH=false"  REM Do not install both by default
+REM ============================================================
+REM Defaults (mirroring Linux ./configure)
+REM ============================================================
+set "LIB_TYPE=both"              REM static | shared | both
+set "INSTALL_BOTH=true"          REM install both by default
+set "ENABLE_DEBUG=false"         REM release by default
+set "ENABLE_LTO=full"            REM off | full | thin  (thin requires clang/lld)
+set "USE_LLD=true"               REM prefer lld when using clang-cl if available
+set "ARCH="                      REM e.g. native, x86-64-v2, x86-64-v3 (mapped)
+set "PREFIX=C:\Program Files\MyLibrary"
+set "COMPILER=clang-cl"          REM or cl
+set "VERSION=1.1.0"
+set "SOVERSION=1"
 
-REM Help message
+REM ============================================================
+REM Help
+REM ============================================================
+if "%~1"=="" goto parse_args
 :show_help
 echo Usage: configure.bat [options]
 echo.
-echo Options:
-echo   --enable-shared       Build shared library
-echo   --enable-static       Build static library (default)
-echo   --enable-debug        Enable debug build with debug symbols
-echo   --enable-32bit        Build for 32-bit architecture
-echo   --enable-both         Build both static and shared libraries
-echo   --prefix=^<dir^>        Specify installation directory (default: C:\Program Files\MyLibrary)
-echo   --compiler=^<compiler^> Specify the compiler to use (default: cl)
-echo   --help                Display this help message
+echo Build options:
+echo   --lib=static^|shared^|both     Library type ^(default: both^)
+echo   --enable-debug                 Debug build ^(-O1 /Od, symbols^)
+echo   --disable-debug                Release build ^(default^)
+echo   --enable-lto[=full^|thin]      Enable LTO ^(default: full; thin=clang only^)
+echo   --disable-lto                  Disable LTO
+echo   --no-lld                       Do not use lld, even with clang
+echo   --compiler=<cxx>               cl ^| clang-cl  ^(default: clang-cl^)
+echo   --arch=<val>                   CPU baseline: native, x86-64-v2, x86-64-v3
+echo.
+echo Install:
+echo   --prefix=<dir>                 Install prefix ^(default: C:\Program Files\MyLibrary^)
+echo.
+echo Example:
+echo   configure.bat --lib=both --enable-lto=thin --compiler=clang-cl --arch=x86-64-v3
 EXIT /B 0
 
-REM Parse command line arguments
-set "ARGS=%*"
-for %%A in (%ARGS%) do (
-    if "%%A"=="--enable-shared" (
-        set "LIB_TYPE=shared"
-    ) else if "%%A"=="--enable-static" (
-        set "LIB_TYPE=static"
-    ) else if "%%A"=="--enable-debug" (
-        set "ENABLE_DEBUG=true"
-    ) else if "%%A"=="--enable-32bit" (
-        set "ARCH=x86"
-    ) else if "%%A"=="--enable-both" (
-        set "INSTALL_BOTH=true"
-    ) else if "%%~A"=="--help" (
-        goto show_help
-    ) else (
-        echo %%~A | findstr /B /C:"--prefix=" >nul
-        if not errorlevel 1 (
-            set "PREFIX=%%~A"
-            set "PREFIX=!PREFIX:--prefix=!"
-        ) else (
-            echo %%~A | findstr /B /C:"--compiler=" >nul
-            if not errorlevel 1 (
-                set "COMPILER=%%~A"
-                set "COMPILER=!COMPILER:--compiler=!"
-            ) else (
-                echo Unknown option: %%A
+REM ============================================================
+REM Parse arguments
+REM ============================================================
+:parse_args
+for %%A in (%*) do (
+    for /F "tokens=1,2 delims==" %%K in ("%%~A") do (
+        if /I "%%~K"=="--lib" (
+            if /I "%%~L"=="static" (set "LIB_TYPE=static") ^
+            else if /I "%%~L"=="shared" (set "LIB_TYPE=shared") ^
+            else if /I "%%~L"=="both" (set "LIB_TYPE=both") ^
+            else (
+                echo Unknown --lib value: %%~L
                 goto show_help
             )
+        ) else if /I "%%~K"=="--enable-debug" (
+            set "ENABLE_DEBUG=true"
+        ) else if /I "%%~K"=="--disable-debug" (
+            set "ENABLE_DEBUG=false"
+        ) else if /I "%%~K"=="--enable-lto" (
+            if "%%~L"=="" (set "ENABLE_LTO=full") else (set "ENABLE_LTO=%%~L")
+        ) else if /I "%%~K"=="--disable-lto" (
+            set "ENABLE_LTO=off"
+        ) else if /I "%%~K"=="--no-lld" (
+            set "USE_LLD=false"
+        ) else if /I "%%~K"=="--compiler" (
+            set "COMPILER=%%~L"
+        ) else if /I "%%~K"=="--arch" (
+            set "ARCH=%%~L"
+        ) else if /I "%%~K"=="--prefix" (
+            set "PREFIX=%%~L"
+        ) else if "%%~K"=="--help" (
+            goto show_help
+        ) else (
+            REM Accept combined form --option=value as well
+            echo %%~A | findstr /B /C:"--compiler=" >nul && (
+                for /F "tokens=2 delims==" %%Z in ("%%~A") do set "COMPILER=%%~Z"
+                goto :continue_args
+            )
+            echo %%~A | findstr /B /C:"--prefix=" >nul && (
+                for /F "tokens=2 delims==" %%Z in ("%%~A") do set "PREFIX=%%~Z"
+                goto :continue_args
+            )
+            echo %%~A | findstr /B /C:"--arch=" >nul && (
+                for /F "tokens=2 delims==" %%Z in ("%%~A") do set "ARCH=%%~Z"
+                goto :continue_args
+            )
+            echo %%~A | findstr /B /C:"--enable-lto=" >nul && (
+                for /F "tokens=2 delims==" %%Z in ("%%~A") do set "ENABLE_LTO=%%~Z"
+                goto :continue_args
+            )
+            echo Unknown option: %%~A
+            goto show_help
         )
+        :continue_args
     )
 )
 
-REM Check if the compiler exists
+REM ============================================================
+REM Normalise choices
+REM ============================================================
+if /I "%LIB_TYPE%"=="both" (set "INSTALL_BOTH=true") else (set "INSTALL_BOTH=false")
+
+REM ============================================================
+REM Detect toolchain kind
+REM ============================================================
+set "IS_MSVC=false"
+set "IS_CLANG=false"
+echo %COMPILER% | findstr /I /R "^cl(\.exe)?$" >nul && set "IS_MSVC=true"
+echo %COMPILER% | findstr /I "clang" >nul && set "IS_CLANG=true"
+
 where /Q "%COMPILER%"
 if errorlevel 1 (
-    echo Error: Compiler '%COMPILER%' not found. Please install it or specify a different compiler using --compiler option.
+    echo error: compiler '%COMPILER%' not found
     EXIT /B 1
 )
 
-REM Set architecture flags
-if "%ARCH%"=="x86" (
-    set "ARCH_FLAGS=/arch:IA32"
+REM ============================================================
+REM Flags
+REM ============================================================
+set "CXXFLAGS="
+set "LDFLAGS="
+set "DEFINES="
+set "ARCH_FLAGS="
+set "LTO_CXX="
+set "LTO_LD="
+
+REM Map --arch to Windows flags (approximate)
+if /I "%ARCH%"=="x86-64-v3" (
+    if "%IS_MSVC%"=="true" ( set "ARCH_FLAGS=/arch:AVX2" ) else ( set "ARCH_FLAGS=-m64 -march=x86-64-v3" )
+) else if /I "%ARCH%"=="x86-64-v2" (
+    if "%IS_MSVC%"=="true" ( set "ARCH_FLAGS=" ) else ( set "ARCH_FLAGS=-m64 -march=x86-64-v2" )
+) else if /I "%ARCH%"=="native" (
+    if "%IS_MSVC%"=="true" ( set "ARCH_FLAGS=" ) else ( set "ARCH_FLAGS=-m64 -march=native" )
 ) else (
-    set "ARCH_FLAGS=/arch:AVX"
+    if "%IS_MSVC%"=="true" ( set "ARCH_FLAGS=" ) else ( set "ARCH_FLAGS=-m64" )
 )
 
-REM Set debug flags
 if "%ENABLE_DEBUG%"=="true" (
-    set "DEBUG_FLAGS=/Zi /Od"
+    if "%IS_MSVC%"=="true" (
+        set "CXXFLAGS=/std:c++17 /W4 /EHsc /permissive- /Od /Zi /FS /DDEBUG /MDd"
+        set "LDFLAGS=/DEBUG"
+    ) else (
+        set "CXXFLAGS=-std=c++17 -Wall -Wextra -Wpedantic -O1 -g -fno-omit-frame-pointer"
+    )
 ) else (
-    set "DEBUG_FLAGS=/O2 /DNDEBUG"
+    if "%IS_MSVC%"=="true" (
+        set "CXXFLAGS=/std:c++17 /W4 /EHsc /permissive- /O2 /DNDEBUG /MD"
+    ) else (
+        set "CXXFLAGS=-std=c++17 -Wall -Wextra -Wpedantic -O3"
+    )
 )
 
-REM Check if the compiler can compile a simple program
-echo int main() { return 0; } > test_compile.cpp
-"%COMPILER%" /nologo %ARCH_FLAGS% test_compile.cpp /Fe:test_compile.exe >nul 2>&1
-if errorlevel 1 (
-    echo Error: Compiler '%COMPILER%' failed to compile a simple test program for %ARCH%.
-    del test_compile.cpp
-    EXIT /B 1
+REM LTO selection
+if /I "%ENABLE_LTO%"=="off" (
+    REM nothing
+) else if /I "%ENABLE_LTO%"=="thin" (
+    if "%IS_CLANG%"=="true" (
+        set "LTO_CXX=-flto=thin"
+        set "LTO_LD=-flto=thin"
+    ) else (
+        echo warning: thin LTO requested but not using clang; falling back to full LTO
+        if "%IS_MSVC%"=="true" ( set "LTO_CXX=/GL" & set "LTO_LD=/LTCG" ) else ( set "LTO_CXX=-flto" & set "LTO_LD=-flto" )
+    )
+) else (
+    if "%IS_MSVC%"=="true" ( set "LTO_CXX=/GL" & set "LTO_LD=/LTCG" ) else ( set "LTO_CXX=-flto" & set "LTO_LD=-flto" )
 )
-del test_compile.cpp test_compile.exe test_compile.obj
 
-REM Check if the compiler can link a shared library
-echo int test() { return 0; } > test_link.cpp
-"%COMPILER%" /nologo %ARCH_FLAGS% test_link.cpp /LD /Fe:test_link.dll >nul 2>&1
-if errorlevel 1 (
-    echo Error: Compiler '%COMPILER%' failed to link a shared library for %ARCH%.
-    del test_link.cpp
-    EXIT /B 1
+REM Prefer lld with clang if requested
+set "LDSEL="
+if "%IS_CLANG%"=="true" if /I "%USE_LLD%"=="true" (
+    where /Q lld-link.exe
+    if not errorlevel 1 ( set "LDSEL=-fuse-ld=lld" )
 )
-del test_link.cpp test_link.dll test_link.exp test_link.lib test_link.obj
 
-REM Generate the NMake Makefile based on the options
+REM Compose final flags
+if "%IS_MSVC%"=="true" (
+    set "CXXCMD=%COMPILER% /nologo %CXXFLAGS% %ARCH_FLAGS%"
+    set "LIB_EXT=lib"
+    set "SO_EXT=dll"
+    set "AR=lib"
+) else (
+    set "CXXCMD=%COMPILER% %CXXFLAGS% %ARCH_FLAGS% %LTO_CXX% %LDSEL%"
+    set "LIB_EXT=a"
+    set "SO_EXT=dll"
+    set "AR=llvm-lib"
+)
+
+REM ============================================================
+REM Generate Makefile (mirrors Linux variables where sensible)
+REM ============================================================
+set "LIBDIR=lib"
+set "OBJDIR=.objs"
+set "TARGET=MyLibrary"
+set "STATIC_LIB=%LIBDIR%\%TARGET%.%LIB_EXT%"
+set "SHARED_LIB=%LIBDIR%\%TARGET%.%SO_EXT%"
+
+if not exist "%OBJDIR%" mkdir "%OBJDIR%"
+if not exist "%LIBDIR%" mkdir "%LIBDIR%"
+
 (
-echo # Auto-generated Makefile
+echo # Auto-generated by configure.bat
+echo CXX=%CXXCMD%
+echo AR=%AR%
+echo CXXFLAGS=
+echo LDFLAGS=%LTO_LD%
+echo PREFIX=%PREFIX%
+echo OBJDIR=%OBJDIR%
+echo LIBDIR=%LIBDIR%
+echo TARGET=%TARGET%
+echo STATIC_LIB=%STATIC_LIB%
+echo SHARED_LIB=%SHARED_LIB%
+echo LIB_TYPE=%LIB_TYPE%
+echo INSTALL_BOTH=%INSTALL_BOTH%
 echo.
-echo CC = %COMPILER%
-echo CXXFLAGS = /EHsc /W3 /Iinclude %ARCH_FLAGS% %DEBUG_FLAGS%
+echo SOURCES= ^
+echo 	src\main.cpp ^
+echo 	src\instantiations.cpp
 echo.
-echo SOURCES = source\matrix.cpp source\testMatrix.cpp
-echo OBJECTS = $(SOURCES:.cpp=.obj)
-echo.
-echo LIB_DIR = lib
-echo STATIC_LIB = $(LIB_DIR)\BML.lib
-echo SHARED_LIB = $(LIB_DIR)\BML.dll
-echo.
-echo LIB_TYPE = %LIB_TYPE%
-echo INSTALL_BOTH = %INSTALL_BOTH%
-echo PREFIX = %PREFIX%
+echo OBJECTS=$(SOURCES:src\=%.objs\=^).obj
 echo.
 echo all: $(LIB_TYPE)
 echo.
-echo static: $(STATIC_LIB)
+echo static:
+echo ^	if not exist $(LIBDIR) mkdir $(LIBDIR)
+echo ^	$(CXX) $(SOURCES) /c /Fo$(OBJDIR)\
+echo ^	$(AR) /OUT:$(STATIC_LIB) $(OBJDIR)\*.obj
 echo.
-echo $(STATIC_LIB): $(OBJECTS)
-echo ^	if not exist $(LIB_DIR) mkdir $(LIB_DIR)
-echo ^	lib /OUT:$(STATIC_LIB) $(OBJECTS)
+echo shared:
+echo ^	if not exist $(LIBDIR) mkdir $(LIBDIR)
+echo ^	$(CXX) $(SOURCES) /c /Fo$(OBJDIR)\
+echo ^	$(CXX) $(OBJDIR)\*.obj /LD %LDFLAGS% /Fe:$(SHARED_LIB)
 echo.
-echo shared: $(SHARED_LIB)
-echo.
-echo $(SHARED_LIB): $(OBJECTS)
-echo ^	if not exist $(LIB_DIR) mkdir $(LIB_DIR)
-echo ^	$(CC) $(OBJECTS) /LD /Fe$(SHARED_LIB)
-echo.
-echo .cpp.obj:
-echo ^	$(CC) $(CXXFLAGS) /c $< /Fo$@
+echo both: static shared
 echo.
 echo install: $(LIB_TYPE)
 echo ^	if not exist "$(PREFIX)\lib" mkdir "$(PREFIX)\lib"
@@ -146,18 +246,22 @@ echo ^	)
 echo ^	copy /Y include\*.hpp "$(PREFIX)\include\"
 echo.
 echo clean:
-echo ^	del /Q $(LIB_DIR)\*.*
-echo ^	del /Q $(OBJECTS)
+echo ^	if exist $(OBJDIR) del /Q $(OBJDIR)\*.obj
+echo ^	if exist $(LIBDIR) del /Q $(LIBDIR)\*.*
 ) > Makefile
 
-REM Output summary
+REM ============================================================
+REM Summary
+REM ============================================================
+echo.
 echo Configuration complete.
-echo Library type: %LIB_TYPE%
-echo Debugging enabled: %ENABLE_DEBUG%
-echo Compiler: %COMPILER%
-echo Architecture: %ARCH%
-echo Install both static and shared libraries: %INSTALL_BOTH%
-echo Install prefix: %PREFIX%
+echo   Library type:     %LIB_TYPE%
+echo   Debug enabled:    %ENABLE_DEBUG%
+echo   LTO:              %ENABLE_LTO%
+echo   Use lld:          %USE_LLD%
+echo   Compiler:         %COMPILER%  ^(msvc=!IS_MSVC! clang=!IS_CLANG!^)
+echo   Arch:             %ARCH%
+echo   Install both:     %INSTALL_BOTH%
+echo   Prefix:           %PREFIX%
 
 EXIT /B 0
-
