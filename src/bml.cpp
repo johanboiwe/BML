@@ -179,6 +179,28 @@ Matrix<T>::Matrix(std::uint32_t numRows, std::uint32_t numCols)
     data.resize((std::size_t)numRows* (std::size_t)numCols);
 }
 
+template<class T>
+Matrix<T>::Matrix(Matrix<T>&& other) noexcept
+    : data(std::move(other.data)),  // <-- rename to your vector member
+      rows(other.rows),
+      cols(other.cols)
+{
+    other.rows = other.cols = 0;
+    other.data.clear();             // optional: make moved-from visibly empty
+}
+
+template<class T>
+Matrix<T>& Matrix<T>::operator=(Matrix<T>&& other) noexcept {
+    if (this != &other) {
+        data = std::move(other.data);   // <-- rename to your vector member
+        rows = other.rows;
+        cols = other.cols;
+        other.rows = other.cols = 0;
+        other.data.clear();             // optional
+    }
+    return *this;
+}
+
 
 template<typename T>
 std::uint32_t Matrix<T>::numRows() const

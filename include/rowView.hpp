@@ -37,6 +37,8 @@ private:
 class BoolRef {
 public:
     explicit BoolRef(std::uint8_t* p) noexcept;
+     BoolRef(const BoolRef& other) noexcept;
+
 
     // READ
     operator bool() const noexcept;
@@ -50,8 +52,8 @@ public:
     BoolRef& operator|=(bool v) noexcept;
     BoolRef& operator^=(bool v) noexcept;
 
-    friend bool operator==(BoolRef a, bool b) noexcept { return static_cast<bool>(a) == b; }
-    friend bool operator!=(BoolRef a, bool b) noexcept { return !(a == b); }
+    friend bool operator==(BoolRef& a, bool b) noexcept { return static_cast<bool>(a) == b; }
+    friend bool operator!=(BoolRef& a, bool b) noexcept { return !(a == b); }
 
 private:
     std::uint8_t* p_;
