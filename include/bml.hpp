@@ -72,7 +72,12 @@ private:
 public:
     Matrix(std::uint32_t numRows, std::uint32_t numCols);
 
-    Matrix(const Matrix<T>&) = default;
+    Matrix(const Matrix&) = default;
+    Matrix& operator=(const Matrix&) = default;        // ← add this
+
+    Matrix(Matrix&& other) noexcept;            // move ctor
+    Matrix& operator=(Matrix&& other) noexcept; // move assign
+    ~Matrix() = default;
 
 
     std::uint32_t numRows() const;
