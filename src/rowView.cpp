@@ -71,7 +71,6 @@ T* RowView<T>::data() const noexcept
 
 
 
-// ---------- BoolRef definitions ----------
 BoolRef::BoolRef(std::uint8_t* p) noexcept : p_(p) {}
 
 BoolRef::operator bool() const noexcept { return *p_ != 0; }
@@ -81,8 +80,18 @@ BoolRef& BoolRef::operator=(bool v) noexcept {
     return *this;
 }
 
-BoolRef& BoolRef::operator=(const BoolRef& other) noexcept {
-    return (*this = static_cast<bool>(other));
+BoolRef& BoolRef::operator=(const BoolRef& o) noexcept {
+    return (*this = static_cast<bool>(o));
+}
+
+BoolRef& BoolRef::operator&=(bool v) noexcept {
+    return *this = (static_cast<bool>(*this) && v);
+}
+BoolRef& BoolRef::operator|=(bool v) noexcept {
+    return *this = (static_cast<bool>(*this) || v);
+}
+BoolRef& BoolRef::operator^=(bool v) noexcept {
+    return *this = (static_cast<bool>(*this) ^ v);
 }
 
 // ====================== RowView<bool> definitions ======================

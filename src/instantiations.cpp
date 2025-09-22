@@ -152,6 +152,13 @@ BML_SPECIAL_TYPES(X)
     template std::size_t Matrix<bool>::count_true<bool>() const noexcept; \
     template bool        Matrix<bool>::any<bool>() const noexcept; \
     template bool        Matrix<bool>::none<bool>() const noexcept;
+    // ---- Bool reductions used in tests ----
+template bool Matrix<bool>::min<bool>() const;
+template bool Matrix<bool>::max<bool>() const;
+
+// (Optional but recommended for consistency)
+template std::pair<std::uint32_t,std::uint32_t> Matrix<bool>::argmin<bool>() const;
+template std::pair<std::uint32_t,std::uint32_t> Matrix<bool>::argmax<bool>() const;
 
 // ---- Apply sets ----
 
@@ -206,6 +213,10 @@ BML_BOOL_TYPES(X)
 // For std::string: only equality/inequality are meaningful here
 template bool operator==<std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
 template bool operator!=<std::string>(const Matrix<std::string>&, const Matrix<std::string>&);
+static_assert(std::is_same_v<decltype(std::declval<Matrix<int>&>()[0][0]), int&>);
+static_assert(std::is_same_v<decltype(std::declval<Matrix<bool>&>()[0][0]), BoolRef>);
+static_assert(std::is_same_v<decltype(std::declval<const Matrix<int>&>()[0][0]), const int&>);
+static_assert(std::is_same_v<decltype(std::declval<const Matrix<bool>&>()[0][0]), bool>);
 
 // -------------------------------
 // Undefine macros

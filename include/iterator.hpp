@@ -3,6 +3,16 @@
 #include <tuple>
 #include <cstdint>
 template <typename T> class Matrix;
+// Helper aliases: deduce element access types
+template<typename T>
+using element_ref_t =
+    decltype(std::declval<Matrix<T>&>()[0][0]);            // e.g. T& or BoolRef
+
+template<typename T>
+using const_element_t =
+    decltype(std::declval<const Matrix<T>&>()[0][0]);      // e.g. const T& or bool
+
+
 enum class TraversalType
 {
     Row,          // Traverse row by row
@@ -35,7 +45,7 @@ public:
     bool operator!=(const ConstIterator& other) const;
 
     // Dereference
-    std::tuple<std::uint32_t, std::uint32_t, const T&> operator*() const;
+    std::tuple<std::uint32_t, std::uint32_t, const_element_t<T>> operator*() const;
 };
 template<typename T>
 class Iterator
@@ -52,7 +62,7 @@ public:
     Iterator& operator++();
     bool operator==(const Iterator& other) const;
     bool operator!=(const Iterator& other) const;
-    std::tuple<std::uint32_t, std::uint32_t, T> operator*() const;
+    std::tuple<std::uint32_t, std::uint32_t, element_ref_t<T>> operator*() const;
 };
 
 

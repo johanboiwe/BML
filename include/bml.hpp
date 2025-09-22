@@ -356,6 +356,6 @@ template<typename T, typename = typename std::enable_if<!std::is_pointer<T>::val
 bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
 
-extern void testMatrix(void);
+extern int testMatrix(void);
 
 #endif // BML_HPP_INCLUDED

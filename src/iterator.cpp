@@ -31,19 +31,26 @@ bool Iterator<T>::operator!=(const Iterator& other) const
     return !(*this == other);
 }
 
-// Dereference
+// Dereference (non-const)
+// Non-const dereference
 template<typename T>
-std::tuple<std::uint32_t, std::uint32_t, T> Iterator<T>::operator*() const
+std::tuple<std::uint32_t, std::uint32_t, element_ref_t<T>>
+Iterator<T>::operator*() const
 {
-    if (row >= static_cast<long>(matrix.numRows()) ||
-            col >= static_cast<long>(matrix.numCols()) ||
-            row < 0 || col < 0)
+    if (row < 0 || col < 0 ||
+        row >= static_cast<long>(matrix.numRows()) ||
+        col >= static_cast<long>(matrix.numCols()))
     {
         throw std::out_of_range("Iterator out of bounds");
     }
-    return std::make_tuple(static_cast<std::uint32_t>(row),
-                           static_cast<std::uint32_t>(col),
-                           matrix[static_cast<std::uint32_t>(row)][static_cast<std::uint32_t>(col)]);
+
+    using R = element_ref_t<T>;  // T& for normal T, BoolRef for T=bool
+    R ref = matrix[static_cast<std::uint32_t>(row)]
+                 [static_cast<std::uint32_t>(col)];
+
+    return { static_cast<std::uint32_t>(row),
+             static_cast<std::uint32_t>(col),
+             ref };
 }
 
 // Example operator++ (if you want row-wise, column-wise, diagonal, etc.)
@@ -123,39 +130,22 @@ bool ConstIterator<T>::operator!=(const ConstIterator& other) const
 }
 
 template<typename T>
-std::tuple<std::uint32_t, std::uint32_t, const T&>
+std::tuple<std::uint32_t, std::uint32_t, const_element_t<T>>
 ConstIterator<T>::operator*() const
 {
-    // Optional debug prints
-    //  std::cerr << "DEBUG ConstIterator::operator*()"
-    //          << " row=" << row
-    //        << " col=" << col;
-
-    // Check if indices are in range
-    if (row >= static_cast<long>(matrix.numRows()) ||
-            col >= static_cast<long>(matrix.numCols()) ||
-            row < 0 || col < 0)
+    if (row < 0 || col < 0 ||
+        row >= static_cast<long>(matrix.numRows()) ||
+        col >= static_cast<long>(matrix.numCols()))
     {
-        std::cerr << " -- OUT OF BOUNDS!\n";
         throw std::out_of_range("ConstIterator out of bounds");
     }
 
-    // Print the address of the element in the underlying vector
-    const T& ref = matrix[static_cast<std::uint32_t>(row)][static_cast<std::uint32_t>(col)];
-//   std::cerr << " value=" << ref
-    //           << " &value=" << static_cast<const void*>(&ref)
-    //         << std::endl;
+    using CR = const_element_t<T>;  // const T& normally, bool for T=bool
+    CR ref = matrix[static_cast<std::uint32_t>(row)]
+                 [static_cast<std::uint32_t>(col)];
 
-    // Return the tuple with the reference
-    return
-    {
-        static_cast<std::uint32_t>(row),
-        static_cast<std::uint32_t>(col),
-        ref
-    };
-
+    return { static_cast<std::uint32_t>(row),
+             static_cast<std::uint32_t>(col),
+             ref };
 }
-
-// Same traversal logic as the non-const operator++
-// (increment row/col according to type)
 

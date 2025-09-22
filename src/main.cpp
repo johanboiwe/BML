@@ -1,4 +1,4 @@
 #include "bml.hpp"
 int main(void){
-    testMatrix();
+    return testMatrix();
     }

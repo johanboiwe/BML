@@ -34,13 +34,24 @@ private:
     std::uint32_t length;
 };
 // ---------- Writable proxy for byte-backed bools (declaration only) ----------
-class BoolRef
-{
+class BoolRef {
 public:
     explicit BoolRef(std::uint8_t* p) noexcept;
+
+    // READ
     operator bool() const noexcept;
+
+    // WRITE
     BoolRef& operator=(bool v) noexcept;
-    BoolRef& operator=(const BoolRef& other) noexcept;
+    BoolRef& operator=(const BoolRef& o) noexcept;
+
+    // Nice-to-have ops
+    BoolRef& operator&=(bool v) noexcept;
+    BoolRef& operator|=(bool v) noexcept;
+    BoolRef& operator^=(bool v) noexcept;
+
+    friend bool operator==(BoolRef a, bool b) noexcept { return static_cast<bool>(a) == b; }
+    friend bool operator!=(BoolRef a, bool b) noexcept { return !(a == b); }
 
 private:
     std::uint8_t* p_;
@@ -76,7 +87,6 @@ public:
     // block T* API for bool
     bool* data() const noexcept = delete;
 
-    std::vector<bool> rowAsVector() const;
 
 private:
     std::uint8_t* row;
