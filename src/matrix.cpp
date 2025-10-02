@@ -393,7 +393,7 @@ namespace bml
         {
             for(std::uint32_t col = 0; col < cols; col++)
             {
-                ss << *this[row][col];
+                ss << (*this)[row][col];
                 ss << " ";
 
             }

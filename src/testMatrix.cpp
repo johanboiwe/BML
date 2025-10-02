@@ -450,48 +450,174 @@ void test_index_and_iterators_deep() {
 
 // ---- std::string tests ----
 static void test_string_verbose() {
-    print_type_header<std::string>("std::string specialisation");
+    print_type_header<std::string>("std::string full coverage");
 
+    // Construct & shape
     Matrix<std::string> m(2,2);
+    expect_eq(m.numRows(), 2u, "rows");
+    expect_eq(m.numCols(), 2u, "cols");
+    expect_false(m.empty(), "not empty");
+    expect_eq(m.size(), static_cast<std::size_t>(4), "size");
+
+    // operator[] write/read
     m[0][0] = "hello";
     m[0][1] = "";
     m[1][0] = "ÅÄÖ";
     m[1][1] = "end";
 
-    LOG("Serialising string matrix to bytestream…");
-    auto bs = m.toByteStream();
-    LOG("Byte size: " << bs.size() << " (" << pretty_bytes(bs.size()) << ")");
+    // toString() — basic sanity (don’t over-spec trailing spaces/newlines)
+    {
+        const auto s = m.toString();
+        expect_true(s.find("hello") != std::string::npos, "toString contains hello");
+        expect_true(s.find("ÅÄÖ")   != std::string::npos, "toString contains ÅÄÖ");
+        expect_true(s.find("end")   != std::string::npos, "toString contains end");
+    }
 
-    Matrix<std::string> r(2,2);
-    r.initFromByteStream(bs);
-    expect_true(m == r, "string round-trip");
+    // getRow / getColumn (full)
+    {
+        auto row0 = m.getRow(0);
+        expect_eq(row0.size(), static_cast<std::size_t>(2), "row0 size");
+        expect_eq(row0[0], "hello", "row0[0]");
+        expect_eq(row0[1], "",       "row0[1]");
 
-    auto all_ok = m.all([](const std::string& s){ return s.size() >= 0; });
-    expect_true(all_ok, "string all() non-negative lengths");
+        auto col0 = m.getColumn(0);
+        expect_eq(col0.size(), static_cast<std::size_t>(2), "col0 size");
+        expect_eq(col0[0], "hello", "col0[0]");
+        expect_eq(col0[1], "ÅÄÖ",   "col0[1]");
+    }
 
-    auto ww = m.where(
-        [](const std::string& s){ return s.empty(); },
-        std::string("X"),
-        std::string("-")
-    );
+    // Ranged getRow / getColumn (uses -1 sentinel)
+    {
+        auto row0_0_1 = m.getRow(0, /*startCol*/0, /*endCol*/1);
+        expect_eq(row0_0_1.size(), static_cast<std::size_t>(1), "row0 [0,1) size");
+        expect_eq(row0_0_1[0], "hello", "row0 [0,1) val");
 
-    LOG("where(empty->X,else -): [0,0]="
-        << format_value(ww[0][0]) << " [0,1]=" << format_value(ww[0][1]));
+        auto col1_1_end = m.getColumn(1, /*startRow*/1, /*endRow*/-1);
+        expect_eq(col1_1_end.size(), static_cast<std::size_t>(1), "col1 [1,end) size");
+        expect_eq(col1_1_end[0], "end", "col1 [1,end) val");
+    }
 
-    expect_eq(ww[0][0], std::string("-"),  "where on 'hello'");
-    expect_eq(ww[0][1], std::string("X"),  "where on empty");
-    expect_eq(ww[1][0], std::string("-"),  "where on 'ÅÄÖ'");
-    expect_eq(ww[1][1], std::string("-"),  "where on 'end'");
+    // Diagonals
+    {
+        auto d  = m.getDiagonal();
+        auto ad = m.getAntiDiagonal();
+        expect_eq(d.size(),  static_cast<std::size_t>(2), "diag size");
+        expect_eq(ad.size(), static_cast<std::size_t>(2), "adiag size");
+        expect_eq(d[0],  "hello", "diag[0]");
+        expect_eq(d[1],  "end",   "diag[1]");
+        expect_eq(ad[0], "",      "adiag[0]");
+        expect_eq(ad[1], "ÅÄÖ",   "adiag[1]");
+    }
 
-    Matrix<std::string> sub = m.copy(0,0,2,1); // 2x1: {"hello","ÅÄÖ"}
-    Matrix<std::string> z(2,2);
-    z.fill(std::string(".."));
-    z.paste(sub, 0, 1);
-    expect_eq(z[0][1], std::string("hello"), "string paste 0,1");
-    expect_eq(z[1][1], std::string("ÅÄÖ"),   "string paste 1,1");
+    // Algorithms: all / any_of / none_of / where
+    {
+        expect_true(m.all([](const std::string& s){ return s.size() >= 0; }),
+                    "all non-negative length");
+        expect_true(m.any_of([](const std::string& s){ return s.empty(); }),
+                    "any_of finds empty");
+        expect_false(m.none_of([](const std::string& s){ return s == "end"; }),
+                     "none_of false when 'end' exists");
 
-    LOG("[OK] strings");
+        auto ww = m.where(
+            [](const std::string& s){ return s.empty(); },
+            std::string("X"),
+            std::string("-")
+        );
+        expect_eq(ww[0][0], "-", "where non-empty");
+        expect_eq(ww[0][1], "X", "where empty");
+        expect_eq(ww[1][0], "-", "where non-empty ÅÄÖ");
+        expect_eq(ww[1][1], "-", "where non-empty end");
+    }
+
+    // fill()
+    {
+        Matrix<std::string> f(2,2);
+        f.fill(std::string(".."));
+        for (std::uint32_t r=0; r<2; ++r)
+            for (std::uint32_t c=0; c<2; ++c)
+                expect_eq(f[r][c], std::string(".."), "fill() cell");
+    }
+
+    // copy() / paste() (incl. -1 sentinel full-copy)
+    {
+        Matrix<std::string> full = m.copy(0,0,-1,-1);
+        expect_true(full == m, "copy full equals original");
+
+        Matrix<std::string> sub = m.copy(0,0,2,1); // first column
+        Matrix<std::string> z(2,2); z.fill(std::string(".."));
+        z.paste(sub, 0, 1);
+        expect_eq(z[0][1], "hello", "paste col[0]");
+        expect_eq(z[1][1], "ÅÄÖ",   "paste col[1]");
+    }
+
+    // Iterators: counts, const iteration, and mutation via non-const iterator
+    {
+        std::size_t cnt = 0;
+        for (auto it = m.begin(TraversalType::Row); it != m.end(TraversalType::Row); ++it) ++cnt;
+        expect_eq(cnt, m.size(), "row iterator count");
+
+        const Matrix<std::string>& cm = m;
+        cnt = 0;
+        for (auto it = cm.begin(TraversalType::Column); it != cm.end(TraversalType::Column); ++it) ++cnt;
+        expect_eq(cnt, cm.size(), "const column iterator count");
+
+        // Mutate through iterator (non-const)
+        auto it = m.begin(TraversalType::Row);
+        auto ed = m.end(TraversalType::Row);
+        for (; it != ed; ++it) {
+            auto&& [r,c,ref] = *it;
+            if (r == 0 && c == 0) { ref += "!"; break; }
+        }
+        expect_eq(m[0][0], "hello!", "iterator write");
+        m[0][0] = "hello"; // revert
+    }
+
+    // Reductions available for strings: min/max/argmin/argmax (non-pointer types)
+    {
+        expect_eq(m.template min<std::string>(), std::string(""),   "min (lexicographic) empty");
+        expect_eq(m.template max<std::string>(), std::string("ÅÄÖ"), "max (lexicographic) ÅÄÖ");
+        auto mn = m.template argmin<std::string>();
+        auto mx = m.template argmax<std::string>();
+        expect_eq(mn.first,  0u, "argmin r");
+        expect_eq(mn.second, 1u, "argmin c");
+        expect_eq(mx.first,  1u, "argmax r");
+        expect_eq(mx.second, 0u, "argmax c");
+    }
+
+    // Bytestream round-trips: vector<> overload and (ptr,size) overload
+    {
+        auto bs = m.toByteStream();
+        Matrix<std::string> r2(2,2); r2.initFromByteStream(bs);
+        expect_true(m == r2, "string round-trip (vector)");
+        Matrix<std::string> r3(2,2); r3.initFromByteStream(bs.data(), bs.size());
+        expect_true(m == r3, "string round-trip (ptr,size)");
+
+        // Malformed bytestream should throw (e.g., truncated)
+        if (!bs.empty()) {
+            auto bad = bs; bad.pop_back();
+            bool threw = false;
+            try { Matrix<std::string> t(2,2); t.initFromByteStream(bad); }
+            catch (...) { threw = true; }
+            expect_true(threw, "initFromByteStream throws on malformed/truncated input");
+        }
+    }
+
+    // Equality & relational operators
+    {
+        Matrix<std::string> a(1,2), b(1,2);
+        a[0][0] = "a"; a[0][1] = "x";
+        b[0][0] = "b"; b[0][1] = "x";
+        expect_true(a != b, "operator!=");
+        expect_true(a == a, "operator== self");
+        expect_true(a <  b, "operator<  lexicographic");
+        expect_true(b >  a, "operator>  lexicographic");
+        expect_true(a <= b, "operator<=");
+        expect_true(b >= a, "operator>=");
+    }
+
+    LOG("[OK] strings (full coverage)");
 }
+
 
 // --- Rule-of-Five test -------------------------------------------------------
 template<typename T>
