@@ -1,4 +1,8 @@
-#include "bml/bml.hpp"
+// test_matrix.cpp
+// Build: clang++ -std=c++17 -O2 -Iinclude test_matrix.cpp -o test_matrix
+// (Adjust include path to where your BML headers live.)
+
+#include "bml/bml.hpp"           // assumes this aggregates Matrix, traits, TraversalType, etc.
 
 #include <algorithm>
 #include <chrono>
@@ -16,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace bml::test {
+namespace bml{
 
 // ---------- logging helpers ----------
 #define LOG(msg)  do { std::cout << msg << std::endl; } while(0)
@@ -35,7 +39,7 @@ struct ScopeTimer {
 
 inline std::string pretty_bytes(unsigned long long b) {
     static constexpr const char* units[] = {"B","KiB","MiB","GiB","TiB"};
-    double d = static_cast<double>(b);
+    auto d = static_cast<double>(b);
     int i = 0;
     while (d >= 1024.0 && i < 4) { d /= 1024.0; ++i; }
     std::ostringstream oss;
@@ -106,6 +110,7 @@ void expect_eq(const A& a, const B& b, const char* what) {
 inline void expect_true(bool v, const char* what)  { if (!v) throw TestFail(std::string("[FAIL] expected true: ")  + what); }
 inline void expect_false(bool v, const char* what) { if ( v) throw TestFail(std::string("[FAIL] expected false: ") + what); }
 
+// trait shorthands
 template<class T> struct is_floatish      : std::is_floating_point<T> {};
 template<class T> struct is_real_integral : bml_is_math_integral<T> {};
 template<class T> struct is_math          : bml_is_math_arithmetic<T> {};
@@ -124,7 +129,7 @@ void fill_sequence(Matrix<T>& m) {
             m[r][c] = static_cast<T>(r*10 + c);
 }
 
-// ---------- tests ----------
+// ---------- core tests ----------
 template<typename T>
 void test_core_shape_iter_verbose() {
     print_type_header<T>("Core/Shape/Iter");
@@ -385,18 +390,15 @@ void test_index_and_iterators_deep() {
         auto it = m.begin(TraversalType::Row);
         auto ed = m.end(TraversalType::Row);
         for (; it != ed; ++it) {
-            auto&& [r, c, ref] = *it;  // bind by reference to the proxy
-            (void)r; (void)c;
-            ref = true;  // "+1" for bool saturates to true
-
+            auto&& [r, c, ref] = *it;  (void)r; (void)c;
+            ref = true;
         }
     } else {
         auto it = m.begin(TraversalType::Row);
         auto ed = m.end(TraversalType::Row);
         for (; it != ed; ++it) {
-            auto&& [r, c, ref] = *it;  // bind by reference
-            (void)r; (void)c;
-            ref = static_cast<T>( static_cast<T>(ref) + static_cast<T>(1) ); // increment
+            auto&& [r, c, ref] = *it;  (void)r; (void)c;
+            ref = static_cast<T>( static_cast<T>(ref) + static_cast<T>(1) );
         }
     }
     expect_eq(m[0][0], static_cast<T>(1),   "iterator write origin+1");
@@ -452,20 +454,17 @@ void test_index_and_iterators_deep() {
 static void test_string_verbose() {
     print_type_header<std::string>("std::string full coverage");
 
-    // Construct & shape
     Matrix<std::string> m(2,2);
     expect_eq(m.numRows(), 2u, "rows");
     expect_eq(m.numCols(), 2u, "cols");
     expect_false(m.empty(), "not empty");
     expect_eq(m.size(), static_cast<std::size_t>(4), "size");
 
-    // operator[] write/read
     m[0][0] = "hello";
     m[0][1] = "";
     m[1][0] = "ÅÄÖ";
     m[1][1] = "end";
 
-    // toString() — basic sanity (don’t over-spec trailing spaces/newlines)
     {
         const auto s = m.toString();
         expect_true(s.find("hello") != std::string::npos, "toString contains hello");
@@ -473,7 +472,6 @@ static void test_string_verbose() {
         expect_true(s.find("end")   != std::string::npos, "toString contains end");
     }
 
-    // getRow / getColumn (full)
     {
         auto row0 = m.getRow(0);
         expect_eq(row0.size(), static_cast<std::size_t>(2), "row0 size");
@@ -486,18 +484,16 @@ static void test_string_verbose() {
         expect_eq(col0[1], "ÅÄÖ",   "col0[1]");
     }
 
-    // Ranged getRow / getColumn (uses -1 sentinel)
     {
-        auto row0_0_1 = m.getRow(0, /*startCol*/0, /*endCol*/1);
+        auto row0_0_1 = m.getRow(0, 0, 1);
         expect_eq(row0_0_1.size(), static_cast<std::size_t>(1), "row0 [0,1) size");
         expect_eq(row0_0_1[0], "hello", "row0 [0,1) val");
 
-        auto col1_1_end = m.getColumn(1, /*startRow*/1, /*endRow*/-1);
+        auto col1_1_end = m.getColumn(1, 1, -1);
         expect_eq(col1_1_end.size(), static_cast<std::size_t>(1), "col1 [1,end) size");
         expect_eq(col1_1_end[0], "end", "col1 [1,end) val");
     }
 
-    // Diagonals
     {
         auto d  = m.getDiagonal();
         auto ad = m.getAntiDiagonal();
@@ -509,7 +505,6 @@ static void test_string_verbose() {
         expect_eq(ad[1], "ÅÄÖ",   "adiag[1]");
     }
 
-    // Algorithms: all / any_of / none_of / where
     {
         expect_true(m.all([](const std::string& s){ return s.size() >= 0; }),
                     "all non-negative length");
@@ -529,7 +524,6 @@ static void test_string_verbose() {
         expect_eq(ww[1][1], "-", "where non-empty end");
     }
 
-    // fill()
     {
         Matrix<std::string> f(2,2);
         f.fill(std::string(".."));
@@ -538,7 +532,6 @@ static void test_string_verbose() {
                 expect_eq(f[r][c], std::string(".."), "fill() cell");
     }
 
-    // copy() / paste() (incl. -1 sentinel full-copy)
     {
         Matrix<std::string> full = m.copy(0,0,-1,-1);
         expect_true(full == m, "copy full equals original");
@@ -550,7 +543,6 @@ static void test_string_verbose() {
         expect_eq(z[1][1], "ÅÄÖ",   "paste col[1]");
     }
 
-    // Iterators: counts, const iteration, and mutation via non-const iterator
     {
         std::size_t cnt = 0;
         for (auto it = m.begin(TraversalType::Row); it != m.end(TraversalType::Row); ++it) ++cnt;
@@ -561,7 +553,6 @@ static void test_string_verbose() {
         for (auto it = cm.begin(TraversalType::Column); it != cm.end(TraversalType::Column); ++it) ++cnt;
         expect_eq(cnt, cm.size(), "const column iterator count");
 
-        // Mutate through iterator (non-const)
         auto it = m.begin(TraversalType::Row);
         auto ed = m.end(TraversalType::Row);
         for (; it != ed; ++it) {
@@ -569,10 +560,9 @@ static void test_string_verbose() {
             if (r == 0 && c == 0) { ref += "!"; break; }
         }
         expect_eq(m[0][0], "hello!", "iterator write");
-        m[0][0] = "hello"; // revert
+        m[0][0] = "hello";
     }
 
-    // Reductions available for strings: min/max/argmin/argmax (non-pointer types)
     {
         expect_eq(m.template min<std::string>(), std::string(""),   "min (lexicographic) empty");
         expect_eq(m.template max<std::string>(), std::string("ÅÄÖ"), "max (lexicographic) ÅÄÖ");
@@ -584,25 +574,17 @@ static void test_string_verbose() {
         expect_eq(mx.second, 0u, "argmax c");
     }
 
-    // Bytestream round-trips: vector<> overload and (ptr,size) overload
     {
+
         auto bs = m.toByteStream();
         Matrix<std::string> r2(2,2); r2.initFromByteStream(bs);
         expect_true(m == r2, "string round-trip (vector)");
         Matrix<std::string> r3(2,2); r3.initFromByteStream(bs.data(), bs.size());
         expect_true(m == r3, "string round-trip (ptr,size)");
 
-        // Malformed bytestream should throw (e.g., truncated)
-        if (!bs.empty()) {
-            auto bad = bs; bad.pop_back();
-            bool threw = false;
-            try { Matrix<std::string> t(2,2); t.initFromByteStream(bad); }
-            catch (...) { threw = true; }
-            expect_true(threw, "initFromByteStream throws on malformed/truncated input");
-        }
+
     }
 
-    // Equality & relational operators
     {
         Matrix<std::string> a(1,2), b(1,2);
         a[0][0] = "a"; a[0][1] = "x";
@@ -617,7 +599,6 @@ static void test_string_verbose() {
 
     LOG("[OK] strings (full coverage)");
 }
-
 
 // --- Rule-of-Five test -------------------------------------------------------
 template<typename T>
@@ -794,24 +775,330 @@ static void stress_strings(std::uint32_t R, std::uint32_t C) {
     }
 }
 
-// ---------- type packs ----------
-#define FOR_EACH_INT_T(OP) \
-    OP(std::int8_t)  OP(std::uint8_t) \
-    OP(std::int16_t) OP(std::uint16_t) \
-    OP(std::int32_t) OP(std::uint32_t) \
-    OP(std::int64_t) OP(std::uint64_t)
+// ---------- NEW NEGATIVE / EDGE / CONTRACT TESTS ----------
 
-#define FOR_EACH_FP_T(OP) \
-    OP(float) OP(double) OP(long double)
+// 1) Shape mismatch should throw for arithmetic and paste
+template<typename T>
+void test_shape_mismatch_and_paste_throws() {
+    if constexpr (!bml_is_math_arithmetic<T>::value) return;
+    Matrix<T> a(2,2), b(3,3);
+    bool threw=false; try { (void)(a + b); } catch (...) { threw=true; }
+    expect_true(threw, "a+b shape mismatch throws");
 
-#define FOR_EACH_POD_T(OP) \
-    FOR_EACH_INT_T(OP) FOR_EACH_FP_T(OP) OP(char)
+    Matrix<T> big(3,3); big.fill(T{});
+    Matrix<T> sub(2,2); sub.fill(T{});
+    threw=false; try { big.paste(sub, /*destRow*/2, /*destCol*/2); } catch (...) { threw=true; }
+    expect_true(threw, "paste out-of-bounds throws");
+}
 
-} // namespace bml::test
+// 2) Out-of-range indices & invalid ranges
+template<typename T>
+void test_bounds_and_ranges() {
+    Matrix<T> m(2,3); m.fill(T{});
+    bool threw=false;
+    try { (void)m.getRow(/*row*/2); } catch (...) { threw=true; }
+    expect_true(threw, "getRow out-of-range throws");
+
+    threw=false; try { (void)m.getColumn(/*col*/3); } catch (...) { threw=true; }
+    expect_true(threw, "getColumn out-of-range throws");
+
+    threw=false; try { (void)m.getRow(0, /*start*/2, /*end*/1); } catch (...) { threw=true; }
+    expect_true(threw, "getRow start>end throws");
+
+    threw=false; try { (void)m.getColumn(0, /*start*/2, /*end*/1); } catch (...) { threw=true; }
+    expect_true(threw, "getColumn start>end throws");
+}
+
+// 3) Zero-dimension matrices for POD and string
+template<typename T>
+void test_zero_dim_generic() {
+    Matrix<T> a(0,0), b(0,5), c(5,0);
+    expect_true(a.empty(), "0x0 empty");
+    expect_true(b.empty(), "0x5 empty");
+    expect_true(c.empty(), "5x0 empty");
+    if constexpr (!std::is_same_v<T, std::string>) {
+        auto bs = a.toByteStream();
+        Matrix<T> r(0,0); r.initFromByteStream(bs);
+        expect_true(a == r, "0x0 POD round-trip");
+    }
+}
+
+// 4) Division / modulus by zero (matrix & scalar)
+template<typename T>
+void test_div_mod_by_zero() {
+    if constexpr (!bml_is_math_arithmetic<T>::value) return;
+    Matrix<T> a(1,2), z(1,2); a.fill(static_cast<T>(1)); z.fill(static_cast<T>(0));
+    bool threw=false;
+    try { (void)(a / z); } catch (...) { threw=true; }
+    expect_true(threw, "matrix/matrix divide by zero throws");
+
+    threw=false;
+    try { (void)(a / static_cast<T>(0)); } catch (...) { threw=true; }
+    expect_true(threw, "matrix/scalar divide by zero throws");
+
+    if constexpr (bml_is_math_integral<T>::value) {
+        threw=false;
+        try { (void)(a % z); } catch (...) { threw=true; }
+        expect_true(threw, "matrix/matrix mod by zero throws");
+
+        threw=false;
+        try { (void)(a % static_cast<T>(0)); } catch (...) { threw=true; }
+        expect_true(threw, "matrix/scalar mod by zero throws");
+    }
+}
+
+    // 5) Shift semantics: negatives flip; counts wrap modulo bit-width
+    template<typename T>
+    void test_shift_domain() {
+    if constexpr (!bml_is_math_integral<T>::value) return;
+
+    Matrix<T> a(1,1); a[0][0] = static_cast<T>(0b0010); // 2
+    const int W = static_cast<int>(sizeof(T) * 8);
+
+    // Negative counts flip direction
+    expect_true((a << -1) == (a >> 1), "(-1) left == 1 right");
+    expect_true((a >> -2) == (a << 2), "(-2) right == 2 left");
+
+    // Zero is identity
+    expect_true((a << 0) == a, "0 left shift is identity");
+    expect_true((a >> 0) == a, "0 right shift is identity");
+
+    // Wrap modulo bit width
+    expect_true((a << (W + 3)) == (a << 3), "left wraps modulo width");
+    expect_true((a >> (W + 5)) == (a >> 5), "right wraps modulo width");
+}
+
+
+// 6) Signed modulus semantics with negatives
+inline void test_signed_modulus_negatives() {
+    Matrix<int> a(1,2), b(1,2);
+    a[0][0] = -5; a[0][1] = -5;
+    b[0][0] =  3; b[0][1] = -3;
+    auto r = a % b;
+    expect_eq(r[0][0], -5 %  3, "(-5)%3");
+    expect_eq(r[0][1], -5 % -3, "(-5)%-3");
+}
+
+// 7) Iterator copy/equality and independence
+template<typename T>
+void test_iterator_copy_and_eq() {
+    Matrix<T> m(2,2); m.fill(T{});
+    auto it1 = m.begin(TraversalType::Row);
+    auto it2 = it1; // copy
+    expect_true(it1 == it2, "iterator equality after copy");
+    ++it1;
+    expect_false(it1 == it2, "iterator inequality after increment");
+}
+
+// 8) Diagonals on thin matrices
+template<typename T>
+void test_thin_diagonals() {
+    Matrix<T> r1c5(1,5), r5c1(5,1);
+    r1c5.fill(T{}); r5c1.fill(T{});
+    expect_eq(r1c5.getDiagonal().size(), static_cast<std::size_t>(1), "diag 1x5 size");
+    expect_eq(r5c1.getDiagonal().size(), static_cast<std::size_t>(1), "diag 5x1 size");
+    expect_eq(r1c5.getAntiDiagonal().size(), static_cast<std::size_t>(1), "adiag 1x5 size");
+    expect_eq(r5c1.getAntiDiagonal().size(), static_cast<std::size_t>(1), "adiag 5x1 size");
+}
+
+// 9) argmin/argmax tie-breaking (first occurrence)
+inline void test_argmin_argmax_ties() {
+    Matrix<int> m(1,4);
+    m[0][0]=1; m[0][1]=1; m[0][2]=2; m[0][3]=2;
+    auto mn = m.argmin<int>();
+    auto mx = m.argmax<int>();
+    expect_eq(mn.first,  0u, "argmin tie row");
+    expect_eq(mn.second, 0u, "argmin tie col first");
+    expect_eq(mx.first,  0u, "argmax tie row");
+    expect_eq(mx.second, 2u, "argmax tie first of max");
+}
+
+// 10) initFromByteStream wrong shape must throw
+template<typename T>
+void test_initFromByteStream_wrong_shape() {
+    Matrix<T> a(2,2); a.fill(T{});
+    auto bs = a.toByteStream();
+    Matrix<T> b(3,3);
+    bool threw=false; try { b.initFromByteStream(bs); } catch (...) { threw=true; }
+    expect_true(threw, "initFromByteStream wrong shape throws");
+}
+
+// --- Round-trip test for LE16 length-prefixed strings (supports embedded NULs) ---
+inline void test_string_roundtrip_len16()
+{
+    using S = std::string;
+
+    auto visible = [](const S& s, std::size_t max = 48) -> std::string {
+        std::string out; out.reserve(std::min(max, s.size()) * 4);
+        const std::size_t n = std::min(max, s.size());
+        for (std::size_t i = 0; i < n; ++i) {
+            const unsigned char ch = static_cast<unsigned char>(s[i]);
+            if (ch == '\0')            out += "\\0";
+            else if (ch == '\\')       out += "\\\\";
+            else if (ch == '\n')       out += "\\n";
+            else if (std::isprint(ch)) out.push_back(static_cast<char>(ch));
+            else {
+                char buf[5];
+                std::snprintf(buf, sizeof(buf), "\\x%02X", ch);
+                out += buf;
+            }
+        }
+        if (s.size() > max) out += "…";
+        return out;
+    };
+
+    auto dump_bytes = [](const std::vector<uint8_t>& v, std::size_t head = 32, std::size_t tail = 16) {
+        std::cout << "  [bs] size=" << v.size() << " bytes\n  [bs] head:";
+        for (std::size_t i = 0; i < std::min(head, v.size()); ++i)
+            std::cout << ' ' << std::hex << std::uppercase << std::setw(2)
+                      << std::setfill('0') << static_cast<int>(v[i]);
+        if (v.size() > head + tail) std::cout << "  …  tail:";
+        const std::size_t start = (v.size() > tail) ? (v.size() - tail) : 0;
+        for (std::size_t i = start; i < v.size(); ++i)
+            std::cout << ' ' << std::hex << std::uppercase << std::setw(2)
+                      << std::setfill('0') << static_cast<int>(v[i]);
+        std::cout << std::dec << "\n";
+    };
+
+    auto dump_cell = [&](const char* name, const S& s) {
+        const auto nul_count = static_cast<std::size_t>(std::count(s.begin(), s.end(), '\0'));
+        std::cout << "  [" << name << "] size=" << s.size()
+                  << " nul_count=" << nul_count
+                  << " preview=\"" << visible(s) << "\"\n";
+    };
+
+    Matrix<S> m(1,2);
+    m[0][0] = S("a\0b", 3);       // embedded NUL survives with LE16
+    m[0][1] = S(60000, 'x');      // long but within 16-bit limit
+
+    std::cout << "[DBG] Original matrix:\n";
+    dump_cell("m[0][0]", m[0][0]);
+    dump_cell("m[0][1]", m[0][1]);
+
+    // Serialise
+    const auto bs = m.toByteStream();
+    std::cout << "[DBG] Byte stream after serialise:\n";
+    dump_bytes(bs);
+
+    // Expected size for LE16: sum(2 + len) per cell
+    const std::size_t expected = (2 + m[0][0].size()) + (2 + m[0][1].size());
+    std::cout << "[DBG] Expected bs size=" << expected
+              << " (sum of 2+len per cell), actual=" << bs.size() << "\n";
+    expect_true(bs.size() == expected, "LE16 bytestream size matches Σ(2+len)");
+
+    // Deserialise
+    Matrix<S> r(1,2);
+    // Use whichever overload you have; this one is safest:
+    r.initFromByteStream(bs.data(), bs.size());
+
+    // Compare
+    const bool eq = (m == r);
+    if (!eq) {
+        std::cout << "[DBG] Equality check: MISMATCH\n";
+        if (m[0][0] != r[0][0]) {
+            std::cout << "  DIFF at [0][0]\n"
+                      << "    lhs.size=" << m[0][0].size()
+                      << " rhs.size=" << r[0][0].size() << "\n"
+                      << "    lhs=\"" << visible(m[0][0]) << "\"\n"
+                      << "    rhs=\"" << visible(r[0][0]) << "\"\n";
+        }
+        if (m[0][1] != r[0][1]) {
+            std::cout << "  DIFF at [0][1]\n"
+                      << "    lhs.size=" << m[0][1].size()
+                      << " rhs.size=" << r[0][1].size() << "\n"
+                      << "    lhs.preview=\"" << visible(m[0][1]) << "\"\n"
+                      << "    rhs.preview=\"" << visible(r[0][1]) << "\"\n";
+        }
+    }
+    expect_true(eq, "LE16 string round-trip preserves all cells");
+
+    // Idempotence
+    const auto bs2 = r.toByteStream();
+    const bool same_bytes = (bs == bs2);
+    if (!same_bytes) {
+        std::cout << "[FAIL] serialiser not idempotent\n";
+        std::cout << "Original bytes:\n"; dump_bytes(bs);
+        std::cout << "Round-tripped bytes:\n"; dump_bytes(bs2);
+    }
+    expect_true(same_bytes, "toByteStream is idempotent after round-trip");
+}
+
+// --- Negative test: oversize string must throw on serialise (limit 65535) ---
+inline void test_string_oversize_should_throw()
+{
+    using S = std::string;
+    Matrix<S> m(1,1);
+    m[0][0] = S(200000, 'x');  // exceeds 16-bit length
+
+    bool threw = false;
+    try {
+        (void)m.toByteStream();
+    } catch (const std::exception& e) {
+        threw = true;
+        std::cout << "[DBG] Caught (as expected): " << e.what() << "\n";
+    }
+    if (!threw) std::cout << "[FAIL] expected throw for >65535-byte string\n";
+    expect_true(threw, "toByteStream throws for strings > 65535 bytes");
+}
+
+
+// 12) Strings: malformed streams (wrong count, extra trailing)
+inline void test_string_malformed_streams() {
+    Matrix<std::string> m(1,2);
+    m[0][0] = "hi"; m[0][1] = "";
+    auto bs = m.toByteStream();
+
+    if (!bs.empty()) {
+        auto bad = bs; bad.pop_back();
+        bool threw=false; try { Matrix<std::string> t(1,2); t.initFromByteStream(bad); } catch (...) { threw=true; }
+        expect_true(threw, "string truncated stream throws");
+    }
+
+    {
+        auto bad = bs; bad.push_back(0xEE);
+        bool threw=false; try { Matrix<std::string> t(1,2); t.initFromByteStream(bad); } catch (...) { threw=true; }
+        expect_true(threw, "string stream with trailing junk throws");
+    }
+}
+
+    // 13) Compile-time SFINAE sanity (deleted ops) via detection idiom
+    // --- C++17 detection idiom (replacement for std::experimental::is_detected_v) ---
+    template<typename, template<class...> class, class...>
+    struct bml_is_detected_impl : std::false_type {};
+
+    template<template<class...> class Op, class... Args>
+    struct bml_is_detected_impl<std::void_t<Op<Args...>>, Op, Args...> : std::true_type {};
+
+    template<template<class...> class Op, class... Args>
+    inline constexpr bool bml_is_detected_v = bml_is_detected_impl<void, Op, Args...>::value;
+
+    template<class M>
+    using try_plus = decltype(std::declval<M&>().operator+(std::declval<const M&>()));
+    template<class M>
+    using try_mul  = decltype(std::declval<M&>().operator*(std::declval<const M&>()));
+
+    inline void test_sfinae_static_asserts() {
+        static_assert(!bml_is_detected_v<try_plus, Matrix<bool>>,
+                      "Matrix<bool> + Matrix<bool> must be disabled");
+        static_assert(!bml_is_detected_v<try_mul,  Matrix<std::string>>,
+                      "Matrix<string> * Matrix<string> must be disabled");
+    }
+
+// 14) Exception safety: failed op leaves lhs unchanged
+template<typename T>
+void test_exception_strong_guarantee() {
+    if constexpr (!bml_is_math_arithmetic<T>::value) return;
+    Matrix<T> a(2,2), b(3,3);
+    a.fill(static_cast<T>(7));
+    bool threw=false; try { (void)(a += b); } catch(...) { threw=true; }
+    expect_true(threw, "a+=b throws on shape mismatch");
+    for (std::uint32_t r=0; r<2; ++r)
+        for (std::uint32_t c=0; c<2; ++c)
+            expect_eq(a[r][c], static_cast<T>(7), "lhs unchanged after throw");
+}
 
 // ============ PUBLIC ENTRY ============
 int testMatrix() {
-    using namespace bml::test;
     try {
         LOG("[BML TEST] Starting…");
         SEP();
@@ -821,41 +1108,91 @@ int testMatrix() {
         #define CALL_CORE_AND_POD(T) \
             test_core_shape_iter_verbose<T>(); \
             test_pod_bytestream_verbose<T>();
-        FOR_EACH_POD_T(CALL_CORE_AND_POD)
+        CALL_CORE_AND_POD(std::int8_t)
+        CALL_CORE_AND_POD(std::uint8_t)
+        CALL_CORE_AND_POD(std::int16_t)
+        CALL_CORE_AND_POD(std::uint16_t)
+        CALL_CORE_AND_POD(std::int32_t)
+        CALL_CORE_AND_POD(std::uint32_t)
+        CALL_CORE_AND_POD(std::int64_t)
+        CALL_CORE_AND_POD(std::uint64_t)
+        CALL_CORE_AND_POD(float)
+        CALL_CORE_AND_POD(double)
+        CALL_CORE_AND_POD(long double)
+        CALL_CORE_AND_POD(char)
         #undef CALL_CORE_AND_POD
+
+        // Zero-dimension for a couple of types
+        test_zero_dim_generic<std::int32_t>();
+        test_zero_dim_generic<double>();
+        test_zero_dim_generic<std::string>();
 
         // Thorough bool and its bytestream path
         test_core_shape_iter_verbose<bool>();
         test_pod_bytestream_verbose<bool>();
         test_bool_thorough();
 
+        // NEW: bounds & ranges and shape mismatch for a representative type
+        test_bounds_and_ranges<int>();
+        test_shape_mismatch_and_paste_throws<int>();
+
         // Deep index & iterator tests
         test_index_and_iterators_deep<std::int32_t>();
         test_index_and_iterators_deep<double>();
         test_index_and_iterators_deep<bool>();
 
+        // Iterator copy/equality (representatives) + thin diagonals
+        test_iterator_copy_and_eq<int>();
+        test_iterator_copy_and_eq<double>();
+        test_thin_diagonals<int>();
+
         // Arithmetic families
-        #define CALL_ARITH(T) test_arithmetic_verbose<T>();
-        FOR_EACH_INT_T(CALL_ARITH)
-        FOR_EACH_FP_T(CALL_ARITH)
-        #undef CALL_ARITH
+        test_arithmetic_verbose<std::int8_t>();
+        test_arithmetic_verbose<std::uint8_t>();
+        test_arithmetic_verbose<std::int16_t>();
+        test_arithmetic_verbose<std::uint16_t>();
+        test_arithmetic_verbose<std::int32_t>();
+        test_arithmetic_verbose<std::uint32_t>();
+        test_arithmetic_verbose<std::int64_t>();
+        test_arithmetic_verbose<std::uint64_t>();
+        test_arithmetic_verbose<float>();
+        test_arithmetic_verbose<double>();
+        test_arithmetic_verbose<long double>();
 
         // Integral-only ops
-        #define CALL_INT_ONLY(T) test_integral_ops_verbose<T>();
-        FOR_EACH_INT_T(CALL_INT_ONLY)
-        #undef CALL_INT_ONLY
+        test_integral_ops_verbose<std::int8_t>();
+        test_integral_ops_verbose<std::uint8_t>();
+        test_integral_ops_verbose<std::int16_t>();
+        test_integral_ops_verbose<std::uint16_t>();
+        test_integral_ops_verbose<std::int32_t>();
+        test_integral_ops_verbose<std::uint32_t>();
+        test_integral_ops_verbose<std::int64_t>();
+        test_integral_ops_verbose<std::uint64_t>();
+
+        // NEW: division/mod by zero, shifts, signed modulus behaviour
+        test_div_mod_by_zero<int>();
+        test_div_mod_by_zero<unsigned int>();
+        test_shift_domain<unsigned int>();
+        test_shift_domain<std::uint64_t>();
+        test_signed_modulus_negatives();
 
         // Strings
         test_string_verbose();
+
+        // NEW: strings bytestream edge cases
+        test_string_roundtrip_len16();
+        test_string_oversize_should_throw();
+        test_string_malformed_streams();
 
         SEP();
         LOG("[BML TEST] Functional tests passed. Beginning stress…");
         SEP();
 
+        // Rule-of-Five
         test_rule_of_five_core<std::int32_t>();
         test_rule_of_five_core<std::string>();
         test_rule_of_five_core<double>();
-        test_rule_of_five_core<bool>(); // if Matrix<bool> meets the semantics
+        test_rule_of_five_core<bool>(); // if Matrix<bool> fulfils value semantics
 
         // --- Stress sizes (adaptive)
         struct Attempt { std::uint32_t r,c; };
@@ -870,6 +1207,11 @@ int testMatrix() {
             break; // do one tier; remove to cascade
         }
 
+        // NEW: wrong-shape bytestream for POD, compile-time checks, exception safety
+        test_initFromByteStream_wrong_shape<int>();
+        test_sfinae_static_asserts();
+        test_exception_strong_guarantee<int>();
+
         SEP();
         LOG("[BML TEST] All tests completed successfully.");
         return 0;
@@ -883,3 +1225,6 @@ int testMatrix() {
         return 1;
     }
 }
+
+} // namespace bml::test
+
