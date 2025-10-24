@@ -1,4 +1,4 @@
-#include "bml/bml.hpp"
-int main(void){
-    return testMatrix(); // return 1 on success, 0 on failure
-    }
+namespace bml { int testMatrix(); }
+int main() {
+    return bml::testMatrix();  // 0 = success, 1 = failure (as your test harness does)
+}
