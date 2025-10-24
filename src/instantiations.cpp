@@ -1,6 +1,6 @@
 // instantiations.cpp
 // Single TU that pulls in template *definitions* and emits explicit instantiations.
-// IMPORTANT: Do NOT compile matrix.cpp / iterator.cpp / rowView.cpp separately.
+// IMPORTANT: Do NOT compile matrix.cpp / iterator.cpp / rowView.cpp  or boolReff separately.
 
 #include <cstdint>
 #include <cstddef>
@@ -14,6 +14,7 @@
 #include "matrix.cpp"
 #include "iterator.cpp"
 #include "rowView.cpp"
+#include "boolRef.cpp"
 
 namespace bml
 {
