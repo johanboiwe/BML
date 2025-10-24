@@ -5,6 +5,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <cstdint>
+
+#include "stringStorage.hpp"
 #include "bml/iterator.hpp"
 
 
@@ -253,40 +255,78 @@ namespace bml
         return byteStream;
     }
 
-    template<>
-    void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t byteSize)
+template<>
+void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t byteSize)
+{
+    if (byteStream == nullptr && byteSize != 0)
+        throw std::runtime_error("Null bytestream pointer with non-zero size");
+
+    std::size_t location = 0;
+
+    std::vector<StringStorage> strings;
+    strings.reserve(data.size());
+
+    const std::size_t expected = data.size();
+
+    for (std::size_t i = 0; i < expected; ++i)
     {
-        //finding the stat locations in the stream
-        std::vector<size_t> startLocations;
-        startLocations.push_back(0);
-        for (size_t i = 0; i < byteSize; ++i)
-        {
-            if(byteStream[i] == 0) startLocations.push_back(i+1);
-        }
-        //check if the amount of strings is right
-        if((startLocations.size()-1) != rows * cols)throw std::runtime_error("Invalid byte stream size for Matrix<std::string>");
-        if(startLocations[startLocations.size()-1]-0 != byteSize)throw std::runtime_error("Invalid byte stream format for Matrix<std::string>, does not end with a null");
+        // need 2 bytes for length
+        if (location + 2 > byteSize)
+            throw std::runtime_error(
+                std::string("Truncated length at string index ") + std::to_string(i) +
+                ", need 2 bytes at offset " + std::to_string(location) +
+                ", have " + std::to_string(byteSize - location)
+            );
 
-        // setting the matrix strings
-        size_t counter = 0;
-        for (const auto& [row, col, _ ] : *this)
-        {
-            char* currentCStr = new char [startLocations[counter+1] - startLocations[counter]];
-            std::memcpy(currentCStr, byteStream + startLocations[counter], startLocations[counter+1] - startLocations[counter]);
-            try
-            {
-                (*this)[row][col] = std::string(currentCStr);
-            }
-            catch (const std::exception&)
-            {
-                delete[] currentCStr;
-                throw;
-            }
-            delete[] currentCStr;
-            counter++;
-        }
+        // peek LE16 length before constructing
+        const std::uint16_t len = static_cast<std::uint16_t>(
+            byteStream[location] |
+            (static_cast<std::uint16_t>(byteStream[location + 1]) << 8)
+        );
 
+        // need 'len' bytes of payload
+        const std::size_t avail = byteSize - (location + 2);
+        if (avail < static_cast<std::size_t>(len))
+            throw std::runtime_error(
+                std::string("Truncated payload at string index ") + std::to_string(i) +
+                " (len=" + std::to_string(len) +
+                ", available=" + std::to_string(avail) +
+                ", offset=" + std::to_string(location + 2) + ")"
+            );
+
+        // safe to construct now
+        StringStorage currentString(byteStream + location);
+        location += static_cast<std::size_t>(len) + 2;
+        strings.push_back(currentString);
     }
+
+    // exact-end validation
+    if (location != byteSize)
+    {
+        if (location < byteSize)
+            throw std::runtime_error(
+                std::string("Leftover bytes after reading strings: ") +
+                std::to_string(byteSize - location)
+            );
+        else
+            throw std::runtime_error("Consumed beyond end of bytestream");
+    }
+
+    if (strings.size() != data.size()) {
+        throw std::runtime_error(
+            std::string("Bytestream and matrix size do not match: strings=") +
+            std::to_string(strings.size()) +
+            ", matrix=" + std::to_string(data.size())
+        );
+    }
+
+    const std::size_t matrixSize = data.size();
+    for (std::size_t i = 0; i < matrixSize; ++i)
+    {
+        data[i] = strings[i].toString();
+    }
+}
+
 
     template<>
     std::vector<uint8_t> Matrix<std::string>::toByteStream() const
@@ -296,10 +336,26 @@ namespace bml
 
         for (const auto& [r, c, cell] : *this)
         {
-            // append the string bytes
-            result.insert(result.end(), cell.begin(), cell.end());
-            // append NUL terminator so the parser can find the end
-            result.push_back('\0');
+            if (cell.size() > static_cast<std::size_t>(0xFFFF))
+            {
+                throw std::length_error(
+                    std::string("Max size to serialise a string is ")
+                    + std::to_string(0xFFFF)
+                    + "; string at row "
+                    + std::to_string(r)
+                    + ", column "
+                    + std::to_string(c)
+                    + " has length "
+                    + std::to_string(cell.size())
+                );}
+
+            //length is good, we can now serialise the string
+            StringStorage stringStorage = StringStorage(cell);
+            std::vector<std::uint8_t> bytes = stringStorage.toBytes();
+            for(uint8_t i: bytes)
+            {
+                result.push_back(i);
+            }
         }
 
         return result;
