@@ -62,22 +62,70 @@ namespace bml
 
         explicit operator bool() noexcept;
 
-        /// Compare to a bool by value.
-        friend bool operator==(const BoolRef& a, bool b) noexcept;
-        /// Negation of equality.
-        friend bool operator!=(const BoolRef& a, bool b) noexcept;
-
     private:
         std::uint8_t* p_; ///< Pointer to the referenced storage byte (non-owning).
     };// boolRef
 
-     // —— free operators so proxy–proxy and bool–proxy also work ——
-     bool operator==(BoolRef a, BoolRef b) noexcept;
-     bool operator!=(BoolRef a, BoolRef b) noexcept;
-     bool operator==(bool a,  BoolRef b) noexcept;
-     bool operator!=(bool a,  BoolRef b) noexcept;
+    // ---------- Free comparison & stream operators ----------
 
-     std::ostream& operator<<(std::ostream& os, const BoolRef& br);
+    /**
+     * @brief Equality between two @c BoolRef proxies.
+     * @param a Left-hand proxy.
+     * @param b Right-hand proxy.
+     * @return @c true iff both read the same boolean value.
+     */
+    bool operator==(const BoolRef& a, const BoolRef& b) noexcept;
+
+    /**
+     * @brief Inequality between two @c BoolRef proxies.
+     * @param a Left-hand proxy.
+     * @param b Right-hand proxy.
+     * @return @c true iff the read boolean values differ.
+     */
+    bool operator!=(const BoolRef& a, const BoolRef& b) noexcept;
+
+    /**
+     * @brief Equality between a @c BoolRef and a @c bool (proxy on the left).
+     * @param a Left-hand @c BoolRef proxy.
+     * @param b Right-hand @c bool value.
+     * @return @c true iff @p a reads the same value as @p b.
+     */
+    bool operator==(const BoolRef& a, bool b) noexcept;
+
+    /**
+     * @brief Inequality between a @c BoolRef and a @c bool (proxy on the left).
+     * @param a Left-hand @c BoolRef proxy.
+     * @param b Right-hand @c bool value.
+     * @return @c true iff @p a and @p b differ.
+     */
+    bool operator!=(const BoolRef& a, bool b) noexcept;
+
+    /**
+     * @brief Equality between a @c bool and a @c BoolRef (proxy on the right).
+     * @param a Left-hand @c bool value.
+     * @param b Right-hand @c BoolRef proxy.
+     * @return @c true iff @p a equals the value read from @p b.
+     * @note Enables expressions like @c std::_Bit_reference == BoolRef (LHS converts to @c bool).
+     */
+    bool operator==(bool a, const BoolRef& b) noexcept;
+
+    /**
+     * @brief Inequality between a @c bool and a @c BoolRef (proxy on the right).
+     * @param a Left-hand @c bool value.
+     * @param b Right-hand @c BoolRef proxy.
+     * @return @c true iff @p a and @p b differ.
+     */
+    bool operator!=(bool a, const BoolRef& b) noexcept;
+
+    /**
+     * @brief Stream output of the referenced boolean value.
+     * @param os Output stream.
+     * @param br Proxy to print.
+     * @return @p os
+     */
+    std::ostream& operator<<(std::ostream& os, BoolRef br);
+
+
 
 } // bml
 
