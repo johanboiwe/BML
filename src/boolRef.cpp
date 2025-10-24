@@ -37,38 +37,38 @@ namespace bml
         return false;
     }
 
-    bool operator==(BoolRef a, BoolRef b) noexcept
+    bool operator==(const BoolRef& a, const BoolRef& b) noexcept
     {
-        return(static_cast<bool>(a)==static_cast<bool>(b));
+        return  static_cast<bool>(a) == static_cast<bool>(b);
     }
 
-    bool operator!=(BoolRef a, BoolRef b) noexcept
+    bool operator!=(const BoolRef& a, const BoolRef& b) noexcept
     {
-        return(static_cast<bool>(a)!=static_cast<bool>(b));
-    }
-
-    bool operator==(bool a, BoolRef b) noexcept
-    {
-        return(a==static_cast<bool>(b));
-    }
-
-    bool operator!=(bool a, BoolRef b) noexcept
-    {
-        return(a!=static_cast<bool>(b));
-    }
-
-    std::ostream& operator<<(std::ostream& os, const BoolRef& br)
-    {
-        return os<<static_cast<bool>(br);
+        return static_cast<bool>(a) != static_cast<bool>(b);
     }
 
     bool operator==(const BoolRef& a, bool b) noexcept
     {
-        return(static_cast<bool>(a)==b);
+        return  static_cast<bool>(a) == b;
     }
 
     bool operator!=(const BoolRef& a, bool b) noexcept
     {
-        return(static_cast<bool>(a)!=b);
+        return  static_cast<bool>(a) != b;
+    }
+
+    bool operator==(bool a, const BoolRef& b) noexcept
+    {
+        return a == static_cast<bool>(b);
+    }
+
+    bool operator!=(const bool a, const BoolRef& b) noexcept
+    {
+        return a != static_cast<bool>(b);
+    }
+
+    std::ostream& operator<<(std::ostream& os, BoolRef br)
+    {
+        return os << static_cast<bool>(br);
     }
 } // bml
