@@ -7,6 +7,4 @@
 #include "bml/rowView.hpp"
 #include "bml/boolRef.hpp"
 
-
-extern int testMatrix();
 #endif // BML_HPP_INCLUDED
