@@ -13,9 +13,10 @@
 
 namespace bml
 {
-
-    template<class T> class MatrixIterator;
-    template<class T> class ConstMatrixIterator;
+    template <class T>
+    class MatrixIterator;
+    template <class T>
+    class ConstMatrixIterator;
 
     template <typename T>
     class BML_API Matrix
@@ -43,8 +44,8 @@ namespace bml
         Matrix(const Matrix&) = default;
         Matrix& operator=(const Matrix&) = default;
 
-        Matrix(Matrix&& other) noexcept;             // move ctor
-        Matrix& operator=(Matrix&& other) noexcept;  // move assign
+        Matrix(Matrix&& other) noexcept; // move ctor
+        Matrix& operator=(Matrix&& other) noexcept; // move assign
         ~Matrix() = default;
 
         [[nodiscard]] std::uint32_t numRows() const;
@@ -503,7 +504,6 @@ namespace bml
 
     template <typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
     bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs);
-
 } // namespace bml
 
 #endif // BML_MATRIX_HPP
