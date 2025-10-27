@@ -10,14 +10,23 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(BML_ENABLE_WARNINGS     "Enable extra warnings" ON)
 option(BML_INSTALL_PACKAGE     "Install CMake package config" ON)
 
-# LTO via flags (not IPO); Debug can opt in.
-option(BML_ENABLE_LTO          "Add -flto flags on Release/RelWithDebInfo" ON)
-option(BML_LTO_ON_DEBUG        "Also add -flto flags on Debug" OFF)
-set(BML_LTO_FLAG         "-flto=full"   CACHE STRING "Use -flto=full or -flto=thin")
-set(BML_LTO_LINK_DEBUG   "-Wl,--lto-O0" CACHE STRING "LLD LTO level in Debug")
-set(BML_LTO_LINK_RELEASE "-Wl,--lto-O3" CACHE STRING "LLD LTO level in Release-ish")
+# LTO via flags; Debug can opt-in.
+option(BML_ENABLE_LTO          "Enable LTO on Release/RelWithDebInfo" ON)
+option(BML_LTO_ON_DEBUG        "Also enable LTO on Debug" OFF)
 
-# ---------- Default build type ----------
+# Choose flavour per compiler (can be overridden on the CLI)
+# Clang/AppleClang
+set(BML_LTO_FLAG_CLANG       "-flto=full"          CACHE STRING "Clang LTO flag (full/thin)")
+set(BML_LTO_FLAG_APPLECLANG  "-flto=thin"          CACHE STRING "AppleClang LTO flag (thin/full)")
+set(BML_LTO_LINK_CLANG_DBG   "-Wl,--lto-O0"        CACHE STRING "LLD LTO level for Debug (Clang+LLD)")
+set(BML_LTO_LINK_CLANG_REL   "-Wl,--lto-O3"        CACHE STRING "LLD LTO level for Release (Clang+LLD)")
+# GCC
+set(BML_LTO_FLAG_GNU         "-flto"               CACHE STRING "GCC LTO flag")
+# MSVC
+set(BML_LTO_FLAG_MSVC        "/GL"                 CACHE STRING "MSVC compile-time LTCG flag")
+set(BML_LTO_LINK_MSVC        "/LTCG"               CACHE STRING "MSVC link-time LTCG flag")
+
+# ---------- Default build type for single-config generators ----------
 set(DEFAULT_BUILD_TYPE "RelWithDebInfo")
 if(NOT CMAKE_CONFIGURATION_TYPES)
     if(NOT CMAKE_BUILD_TYPE)
@@ -57,104 +66,141 @@ target_include_directories(BML_shared PUBLIC
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-# Building the lib (guards extern template, etc.)
+# Tell headers we are building the lib
 target_compile_definitions(BML_static PRIVATE BML_BUILDING=1)
 target_compile_definitions(BML_shared PRIVATE BML_BUILDING=1)
 
-# ---------- Warnings ----------
+# ---------- Warnings per compiler ----------
 if(BML_ENABLE_WARNINGS)
     foreach(tgt IN LISTS BML_TARGETS)
         target_compile_options(${tgt} PRIVATE
-                $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra -Wpedantic -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-covered-switch-default -Wno-padded>
+                # GCC
+                $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
+                # Clang/AppleClang
+                $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wall -Wextra -Wpedantic -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-covered-switch-default -Wno-padded>
+                # MSVC
                 $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive->
         )
     endforeach()
 endif()
 
-# ---------- Per-config compile opts ----------
+# ---------- Per-config additions (optimisation flags are provided by CMake) ----------
 foreach(tgt IN LISTS BML_TARGETS)
     target_compile_options(${tgt} PRIVATE
-            $<$<CONFIG:Debug>:-O0 -g>
-            $<$<CONFIG:Release>:-O3 -DNDEBUG>
-            $<$<CONFIG:RelWithDebInfo>:-O2 -g -DNDEBUG>
+            $<$<CONFIG:Debug>:-g>
+            $<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>,$<CONFIG:Debug>>:-fno-omit-frame-pointer>
+            $<$<AND:$<CXX_COMPILER_ID:GNU>,$<CONFIG:Debug>>:-fno-omit-frame-pointer>
+            $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<CONFIG:Debug>>:/Zi /Ob0 /Od>
     )
 endforeach()
 
-# ---------- LTO flags (no IPO; Debug opt-in) ----------
+# ---------- LTO flags per compiler (no IPO variable flipping) ----------
 if(BML_ENABLE_LTO)
     foreach(tgt IN LISTS BML_TARGETS)
+        # Release / RelWithDebInfo
         target_compile_options(${tgt} PRIVATE
-                $<$<CONFIG:Release>:${BML_LTO_FLAG}>
-                $<$<CONFIG:RelWithDebInfo>:${BML_LTO_FLAG}>
-                $<$<AND:$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG}>
+                # GCC
+                $<$<AND:$<CXX_COMPILER_ID:GNU>,$<CONFIG:Release>>:${BML_LTO_FLAG_GNU}>
+                $<$<AND:$<CXX_COMPILER_ID:GNU>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_FLAG_GNU}>
+                # Clang
+                $<$<AND:$<CXX_COMPILER_ID:Clang>,$<CONFIG:Release>>:${BML_LTO_FLAG_CLANG}>
+                $<$<AND:$<CXX_COMPILER_ID:Clang>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_FLAG_CLANG}>
+                # AppleClang
+                $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<CONFIG:Release>>:${BML_LTO_FLAG_APPLECLANG}>
+                $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_FLAG_APPLECLANG}>
+                # MSVC
+                $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<CONFIG:Release>>:${BML_LTO_FLAG_MSVC}>
+                $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_FLAG_MSVC}>
+        )
+        # Debug opt-in
+        target_compile_options(${tgt} PRIVATE
+                $<$<AND:$<CXX_COMPILER_ID:GNU>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG_GNU}>
+                $<$<AND:$<CXX_COMPILER_ID:Clang>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG_CLANG}>
+                $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG_APPLECLANG}>
+                $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG_MSVC}>
         )
     endforeach()
 
+    # Link flags for shared lib
     target_link_options(BML_shared PRIVATE
-            $<$<CONFIG:Release>:${BML_LTO_FLAG}>
-            $<$<CONFIG:RelWithDebInfo>:${BML_LTO_FLAG}>
-            $<$<AND:$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG}>
-            $<$<CONFIG:Debug>:${BML_LTO_LINK_DEBUG}>
-            $<$<OR:$<CONFIG:RelWithDebInfo>,$<CONFIG:Release>>:${BML_LTO_LINK_RELEASE}>
+            # GCC
+            $<$<AND:$<CXX_COMPILER_ID:GNU>,$<CONFIG:Release>>:${BML_LTO_FLAG_GNU}>
+            $<$<AND:$<CXX_COMPILER_ID:GNU>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_FLAG_GNU}>
+            $<$<AND:$<CXX_COMPILER_ID:GNU>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG_GNU}>
+
+            # Clang + LLD (if used): add --lto-O*; safe to omit on Apple ld
+            $<$<AND:$<CXX_COMPILER_ID:Clang>,$<CONFIG:Release>>:${BML_LTO_FLAG_CLANG} ${BML_LTO_LINK_CLANG_REL}>
+            $<$<AND:$<CXX_COMPILER_ID:Clang>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_FLAG_CLANG} ${BML_LTO_LINK_CLANG_REL}>
+            $<$<AND:$<CXX_COMPILER_ID:Clang>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG_CLANG} ${BML_LTO_LINK_CLANG_DBG}>
+
+            # AppleClang
+            $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<CONFIG:Release>>:${BML_LTO_FLAG_APPLECLANG}>
+            $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_FLAG_APPLECLANG}>
+            $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_FLAG_APPLECLANG}>
+
+            # MSVC
+            $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<CONFIG:Release>>:${BML_LTO_LINK_MSVC}>
+            $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<CONFIG:RelWithDebInfo>>:${BML_LTO_LINK_MSVC}>
+            $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<BOOL:${BML_LTO_ON_DEBUG}>,$<CONFIG:Debug>>:${BML_LTO_LINK_MSVC}>
     )
 endif()
 
-# ---------- Prefer lld on Linux for shared link ----------
+# ---------- Prefer lld on Linux for shared link (Clang/GCC only) ----------
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-fuse-ld=lld" HAS_LLD_FLAG)
 if(HAS_LLD_FLAG AND (CMAKE_SYSTEM_NAME STREQUAL "Linux"))
-    target_link_options(BML_shared PRIVATE "-fuse-ld=lld")
+    target_link_options(BML_shared PRIVATE
+            $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-fuse-ld=lld>
+    )
 endif()
 
 # ---------- Test executable ----------
 add_executable(testProgram ${BML_TEST_SOURCES})
 target_link_libraries(testProgram PRIVATE BML_shared)
 target_include_directories(testProgram PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(testProgram PRIVATE
-        $<$<CONFIG:Debug>:-O0 -g>
-        $<$<CONFIG:Release>:-O3 -DNDEBUG>
-        $<$<CONFIG:RelWithDebInfo>:-O2 -g -DNDEBUG>
-)
 
 # ---------- Install / package ----------
-install(TARGETS BML_static BML_shared
+# Install both libs with export
+install(TARGETS BML_shared BML_static
         EXPORT BMLTargets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}   # Windows DLLs
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(TARGETS testProgram RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+# Package config
 if(BML_INSTALL_PACKAGE)
     include(CMakePackageConfigHelpers)
-
-    # Create the config file for find_package(BML CONFIG)
     configure_package_config_file(
             ${CMAKE_CURRENT_LIST_DIR}/cmake/BMLConfig.cmake.in
             ${CMAKE_CURRENT_BINARY_DIR}/BMLConfig.cmake
             INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BML
     )
-
-    # Create the version file
     write_basic_package_version_file(
             ${CMAKE_CURRENT_BINARY_DIR}/BMLConfigVersion.cmake
             VERSION ${PROJECT_VERSION}
             COMPATIBILITY SameMajorVersion
     )
-
-    # Install the exported targets and the config files
-    install(EXPORT BMLTargets
-            NAMESPACE BML::
-            FILE BMLTargets.cmake
+    install(EXPORT BMLTargets NAMESPACE BML:: FILE BMLTargets.cmake
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BML)
-
     install(FILES
             ${CMAKE_CURRENT_BINARY_DIR}/BMLConfig.cmake
             ${CMAKE_CURRENT_BINARY_DIR}/BMLConfigVersion.cmake
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BML)
 endif()
 
-
-# ---------- CTest ----------
+# ---------- Tests: add & run on every build ----------
 include(CTest)
 add_test(NAME bml_smoke COMMAND testProgram)
+
+# Build both libs explicitly and always run tests
+add_custom_target(bml_all ALL
+        DEPENDS BML_shared BML_static
+)
+add_custom_target(run_tests ALL
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<IF:$<BOOL:${CMAKE_CONFIGURATION_TYPES}>,$<CONFIG>,${CMAKE_BUILD_TYPE}>
+        DEPENDS testProgram
+        USES_TERMINAL
+)
