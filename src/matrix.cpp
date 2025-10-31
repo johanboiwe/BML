@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <cstdint>
 
-#include "stringStorage.hpp"
+#include "../include/bml/stringStorage.hpp"
 #include "bml/iterator.hpp"
 
 
@@ -363,7 +363,7 @@ void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t b
     template<typename T>
     Matrix<T> Matrix<T>::copy(std::uint32_t startRow,
                               std::uint32_t startCol,
-                              int endRow, int endCol) const
+                              std::int64_t endRow, std::int64_t endCol) const
     {
         if (endRow < -1)
             throw std::out_of_range("endRow < -1");

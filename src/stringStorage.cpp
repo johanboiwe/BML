@@ -2,7 +2,7 @@
 // Created by johan on 2025-10-14.
 //
 
-#include "stringStorage.hpp"
+#include "../include/bml/stringStorage.hpp"
 
 #include <vector>
 

@@ -3,139 +3,212 @@
 
 #include <cstdint>
 #include "bml/boolRef.hpp"
+
 /**
- * @brief Writable proxy to a byte-backed boolean.
+ * @file
+ * @brief Row-only, non-owning views over matrix storage (generic and bool-specialised).
  *
- * Models an lvalue-like reference to a bool stored in a single @c std::uint8_t.
- * Reads convert any non-zero to @c true; writes store @c 0 or @c 1.
- *
- * @note Does not own memory; the caller guarantees @p p_ remains valid.
- * @warning This wraps a whole byte. If you intend bit-packing, you’ll want a
- *          pointer + bit index/mask rather than a single pointer.
+ * @note Views do not own memory; the backing storage must outlive the view.
+ * @see bml::BoolRef for byte-backed bool element proxies.
  */
 
 namespace bml
 {
 
-
+/**
+ * @brief Lightweight, non-owning view of a single matrix row.
+ * @tparam T Element type (e.g., arithmetic types, char16_t/char32_t, std::string, void*).
+ *
+ * Provides contiguous, random-access element references into an existing row.
+ * No bounds checks are performed unless stated; UB if preconditions are violated.
+ */
+template<typename T>
+class RowView
+{
+public:
+    /// @brief Construct an empty row view (size()==0, data()==nullptr).
+    RowView() noexcept;
 
     /**
-     * @brief Lightweight, non-owning view of a single matrix row.
-     * @tparam T Element type (e.g., bool, std::int8_t, std::uint8_t, std::int16_t,
-     *           std::uint16_t, std::int32_t, std::uint32_t, std::int64_t, std::uint64_t,
-     *           float, double, long double, char16_t, char32_t, std::string, void*).
-     * @note  The view does not own memory; the underlying storage must remain valid.
+     * @brief Construct a view over a contiguous row.
+     * @param[in] dataPointer Pointer to the first element (may be nullptr iff length==0).
+     * @param[in] length      Number of elements addressable via this view.
+     * @pre dataPointer is valid for @p length elements if @p length > 0.
      */
-    template<typename T>
-    class RowView
-    {
-    public:
-        /// @brief Construct an empty row view (size()==0, data()==nullptr).
-        RowView() noexcept;
+    RowView(T* dataPointer, std::uint32_t length) noexcept;
 
-        /**
-         * @brief Construct a view over a contiguous row.
-         * @param[in] dataPointer Pointer to the first element of the row (maybe nullptr iff length==0).
-         * @param[in] length      Number of elements addressable via this view.
-         * @pre dataPointer is valid for @p length elements (if @p length > 0).
-         */
-        RowView(T* dataPointer, std::uint32_t length) noexcept;
+    /**
+     * @brief Random access (unchecked).
+     * @param[in] col Column index in [0, size()).
+     * @return Reference to element @p col.
+     * @pre col < size().
+     */
+    T&       operator[](std::uint32_t col);
+    /// \overload
+    const T& operator[](std::uint32_t col) const;
 
-        /**
-         * @brief Random access.
-         * @param[in] col Column index in [0, size()).
-         * @return Reference to the element at @p col.
-         * @pre col < size().
-         */
-        T&       operator[](std::uint32_t col);
-        /// \overload
-        const T& operator[](std::uint32_t col) const;
+    /// @brief Begin iterator (mutable). Valid while the underlying storage is valid.
+    T*       begin() noexcept;
+    /// @brief End iterator (mutable).
+    T*       end()   noexcept;
 
-        /// @brief Begin iterator (mutable).
-        T*       begin() noexcept;
-        /// @brief End iterator (mutable).
-        T*       end()   noexcept;
+    /// @brief Begin iterator (const).
+    const T* begin() const noexcept;
+    /// @brief End iterator (const).
+    const T* end()   const noexcept;
 
-        /// @brief Begin iterator (const).
-        const T* begin() const noexcept;
-        /// @brief End iterator (const).
-        const T* end()   const noexcept;
+    /// @brief Number of elements in the row.
+    [[nodiscard]] std::uint32_t size()  const noexcept;
 
-        /// @brief Number of elements in the row.
-        [[nodiscard]] std::uint32_t size()  const noexcept;
+    /// @brief True if size()==0.
+    [[nodiscard]] bool          empty() const noexcept;
 
-        /// @brief True if size()==0.
-        [[nodiscard]] bool          empty() const noexcept;
+    /// @brief Pointer to the first element (may be nullptr when empty).
+    const T*      data()  const noexcept;
 
-        /// @brief Pointer to the first element (maybe nullptr when empty).
-        const T*      data()  const noexcept;
-
-    private:
-        T*            row;      ///< Pointer to first element (non-owning).
-        std::uint32_t length;   ///< Element count addressable via this view.
-    };
+private:
+    T*            row;      ///< Pointer to first element (non-owning).
+    std::uint32_t length;   ///< Element count addressable via this view.
+};
 
 
+// ====================== specialisation: RowView<bool> (declaration) ======================
 
-    // ====================== specialisation: RowView<bool> (declaration) ======================
-    template<> class RowView<bool>
-    {
-    public:
-        RowView() noexcept;
-        RowView(std::uint8_t* dataPointer, std::uint32_t length) noexcept;
+/**
+ * @brief Row view for byte-backed @c bool storage.
+ *
+ * Elements read as @c bool, and write via @ref BoolRef which stores @c 0/@c 1 in a byte.
+ * @note No bit-packing; each logical bool occupies one byte in the backing store.
+ */
+template<> class RowView<bool>
+{
+public:
+    /// @brief Construct an empty row view (size()==0).
+    RowView() noexcept;
 
-        // element access (bounds-checked)
-        BoolRef operator[](std::uint32_t col);
-        bool    operator[](std::uint32_t col) const;
+    /**
+     * @brief Construct a bool row view over byte storage.
+     * @param[in] dataPointer Pointer to the first byte (may be nullptr iff length==0).
+     * @param[in] length      Number of logical bool elements.
+     * @pre dataPointer is valid for @p length bytes if @p length > 0.
+     */
+    RowView(std::uint8_t* dataPointer, std::uint32_t length) noexcept;
 
-        // iteration (range-for)
-        class BoolRowViewIterator;
+    /**
+     * @brief Element access (mutable).
+     * @param[in] col Column index in [0, size()).
+     * @return Writable proxy for the @p col element.
+     * @pre col < size().
+     */
+    BoolRef operator[](std::uint32_t col);
 
-        BoolRowViewIterator       begin() noexcept;
-        BoolRowViewIterator       end()   noexcept;
+    /**
+     * @brief Element access (const).
+     * @param[in] col Column index in [0, size()).
+     * @return Element value at @p col.
+     * @pre col < size().
+     */
+    bool    operator[](std::uint32_t col) const;
+
+    /**
+     * @brief Forward iterator over @ref BoolRef proxies (range-for support).
+     *
+     * Dereferencing yields @ref BoolRef for mutation.
+     * Iterators are invalidated if the underlying storage is invalidated.
+     */
+    class BoolRowViewIterator;
+
+    /// @brief Iterator to first element (proxy-yielding).
+    BoolRowViewIterator begin() noexcept;
+    /// @brief Iterator past the last element.
+    BoolRowViewIterator end()   noexcept;
+
+    /// @brief Number of elements in the row.
+    [[nodiscard]] std::uint32_t size()  const noexcept;
+
+    /// @brief True if size()==0.
+    [[nodiscard]] bool          empty() const noexcept;
+
+    /**
+     * @brief Access the underlying byte storage pointer.
+     * @return Pointer to first byte (may be nullptr when empty).
+     *
+     * @warning Exposes representation; mutate with care.
+     */
+    std::uint8_t*             data_storage()       noexcept;
+    /// \overload
+    [[nodiscard]] const std::uint8_t* data_storage() const noexcept;
+
+    /// @brief Disabled: @c bool* is not meaningful for byte-backed representation.
+    [[nodiscard]] bool* data() const noexcept = delete;
+
+private:
+    std::uint8_t* row;     ///< Pointer to first byte (non-owning).
+    std::uint32_t length;  ///< Number of logical elements.
+};
 
 
-        // info / raw access
-        [[nodiscard]] std::uint32_t size()  const noexcept;
-        [[nodiscard]] bool         empty() const noexcept;
+// ================== specialisation: RowView<const bool> (declaration) ==================
 
-        // bool has no meaningful bool*; expose storage pointer instead
-        std::uint8_t*       data_storage()       noexcept;
-        [[nodiscard]] const std::uint8_t* data_storage() const noexcept;
+/**
+ * @brief Const row view for byte-backed @c bool storage.
+ *
+ * Read-only view; element access yields @c bool values. No mutation possible.
+ */
+template<> class RowView<const bool>
+{
+public:
+    /// @brief Construct an empty const row view (size()==0).
+    RowView() noexcept;
 
-        // block T* API for bool
-        [[nodiscard]] bool* data() const noexcept = delete;
+    /**
+     * @brief Construct a const bool row view over byte storage.
+     * @param[in] dataPointer Pointer to the first byte (may be nullptr iff length==0).
+     * @param[in] length      Number of logical bool elements.
+     * @pre dataPointer is valid for @p length bytes if @p length > 0.
+     */
+    RowView(const std::uint8_t* dataPointer, std::uint32_t length) noexcept;
 
+    /**
+     * @brief Element access (const).
+     * @param[in] col Column index in [0, size()).
+     * @return Element value at @p col.
+     * @pre col < size().
+     */
+    bool operator[](std::uint32_t col) const;
 
-    private:
-        std::uint8_t* row;
-        std::uint32_t  length;
-    };
+    /**
+     * @brief Forward iterator over @c bool values (range-for support).
+     *
+     * Dereferencing yields @c bool by value. Iterator invalidation follows the
+     * underlying storage lifetime.
+     */
+    class ConstBoolRowViewIterator; // defined in .cpp
 
-    // ================== specialisation: RowView<const bool> (declaration) ==================
-    template<> class RowView<const bool>
-    {
-    public:
-        RowView() noexcept;
-        RowView(const std::uint8_t* dataPointer, std::uint32_t length) noexcept;
+    /// @brief Iterator to first element.
+    [[nodiscard]] ConstBoolRowViewIterator begin() const noexcept;
+    /// @brief Iterator past the last element.
+    [[nodiscard]] ConstBoolRowViewIterator end()   const noexcept;
 
-        bool operator[](std::uint32_t col) const;
+    /// @brief Number of elements in the row.
+    [[nodiscard]] std::uint32_t size()  const noexcept;
 
-        class ConstBoolRowViewIterator; // defined in .cpp
-        [[nodiscard]] ConstBoolRowViewIterator begin() const noexcept;
-        [[nodiscard]] ConstBoolRowViewIterator end()   const noexcept;
+    /// @brief True if size()==0.
+    [[nodiscard]] bool          empty() const noexcept;
 
-        [[nodiscard]] std::uint32_t size()  const noexcept;
-        [[nodiscard]] bool         empty() const noexcept;
+    /**
+     * @brief Access the underlying byte storage pointer.
+     * @return Pointer to first byte (may be nullptr when empty).
+     */
+    [[nodiscard]] const std::uint8_t* data_storage() const noexcept;
 
-        [[nodiscard]] const std::uint8_t* data_storage() const noexcept;
+    /// @brief Disabled: @c const bool* is not meaningful for byte-backed representation.
+    [[nodiscard]] const bool* data() const noexcept = delete;
 
-        [[nodiscard]] const bool* data() const noexcept = delete;
+private:
+    const std::uint8_t* row;  ///< Pointer to first byte (non-owning).
+    std::uint32_t       length;
+};
 
-
-    private:
-        const std::uint8_t* row;
-        std::uint32_t        length;
-    };
-}
+} // namespace bml
 #endif // ROWVIEW_HPP
