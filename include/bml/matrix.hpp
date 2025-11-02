@@ -111,7 +111,7 @@ namespace bml
          * @param other Matrix to copy from.
          * @return Reference to this matrix.
          */
-        Matrix& operator=(const Matrix&) = default;
+        Matrix& operator=(const Matrix& other);
 
         /**
          * @brief Move constructor.
@@ -119,7 +119,7 @@ namespace bml
          * Constructs a matrix by taking ownership of the contents of @p other.
          * @param other Matrix to move from.
          */
-        Matrix(Matrix&& other) noexcept = default;
+        Matrix(Matrix&& other) noexcept;
 
         /**
          * @brief Move assignment operator.
@@ -128,7 +128,7 @@ namespace bml
          * @param other Matrix to move from.
          * @return Reference to this matrix.
          */
-        Matrix& operator=(Matrix&& other) noexcept = default;
+        Matrix& operator=(Matrix&& other) noexcept;
 
         /**
          * @brief Destructor.
@@ -1687,48 +1687,263 @@ namespace bml
         logical_xor(bool) const = delete;
 
 
-        // reductions/convenience for masks
+        /**
+         * @brief Count how many elements are true in a boolean matrix.
+         *
+         * Enabled only if T is bool.
+         *
+         * Iterates over all elements and returns how many are logically true.
+         * This is mainly useful when treating a Matrix<bool> as a mask.
+         *
+         * The function is marked noexcept and will not throw.
+         *
+         * @tparam U (do not pass explicitly) internal SFINAE hook, defaults to T
+         * @return std::size_t  number of elements equal to true
+         *
+         * @see logical_and()
+         * @see logical_or()
+         * @see logical_xor()
+         */
         template <typename U = T>
         std::enable_if_t<bml_is_bool<U>::value, std::size_t>
         count_true() const noexcept;
+
+        /**
+         * @brief Deleted for non-bool matrices.
+         *
+         * If T is not bool, this overload is selected and deleted,
+         * causing a compile-time error. The idea is that "count how many
+         * cells are true" only makes sense for Matrix<bool>.
+         *
+         * @tparam U (do not pass explicitly) internal SFINAE hook, defaults to T
+         */
         template <typename U = T>
         std::enable_if_t<!bml_is_bool<U>::value, std::size_t>
         count_true() const noexcept = delete;
 
+
+        /**
+         * @brief Check if any element in the boolean matrix is true.
+         *
+         * Enabled only if T is bool.
+         *
+         * Returns true if at least one cell in the matrix evaluates to true.
+         * Returns false if all cells are false or if the matrix is empty.
+         *
+         * This is noexcept; it does not throw.
+         *
+         * @tparam U (do not pass explicitly) internal SFINAE hook, defaults to T
+         * @return bool  true if any element is true, otherwise false
+         *
+         * @see none()
+         * @see count_true()
+         */
         template <typename U = T>
         std::enable_if_t<bml_is_bool<U>::value, bool>
         any() const noexcept;
+
+        /**
+         * @brief Deleted for non-bool matrices.
+         *
+         * If T is not bool, this overload is selected and deleted,
+         * causing a compile-time error. "Does any cell evaluate true?"
+         * is only defined for Matrix<bool>.
+         *
+         * @tparam U (do not pass explicitly) internal SFINAE hook, defaults to T
+         */
         template <typename U = T>
         std::enable_if_t<!bml_is_bool<U>::value, bool>
         any() const noexcept = delete;
 
+
+        /**
+         * @brief Check if no element in the boolean matrix is true.
+         *
+         * Enabled only if T is bool.
+         *
+         * Returns true if all cells are false, or if the matrix is empty.
+         * Returns false if at least one cell is true.
+         *
+         * This is logically equivalent to `!any()`, but may be implemented
+         * without calling any().
+         *
+         * This is noexcept; it does not throw.
+         *
+         * @tparam U (do not pass explicitly) internal SFINAE hook, defaults to T
+         * @return bool  true if there are zero true elements, otherwise false
+         *
+         * @see any()
+         * @see count_true()
+         */
         template <typename U = T>
         std::enable_if_t<bml_is_bool<U>::value, bool>
         none() const noexcept;
+
+        /**
+         * @brief Deleted for non-bool matrices.
+         *
+         * If T is not bool, this overload is selected and deleted,
+         * causing a compile-time error. "Are there no true cells?"
+         * is only defined for Matrix<bool>.
+         *
+         * @tparam U (do not pass explicitly) internal SFINAE hook, defaults to T
+         */
         template <typename U = T>
         std::enable_if_t<!bml_is_bool<U>::value, bool>
         none() const noexcept = delete;
+
     };
 
-    // Equality operators (available for all T)
+        // ======================= Comparisons =======================
+
+    /**
+     * @brief Compare two matrices for equality.
+     *
+     * Returns true if and only if:
+     *   1. `lhs` and `rhs` have the same dimensions (same number of rows and columns), and
+     *   2. every corresponding element compares equal with `==`.
+     *
+     * Works for all T, including pointer types, std::string, etc.
+     *
+     * @tparam T element type stored in the matrices
+     * @param lhs const Matrix<T>& left-hand operand
+     * @param rhs const Matrix<T>& right-hand operand
+     * @return bool true if matrices are equal in shape and contents, otherwise false
+     */
     template <typename T>
     bool operator==(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
+    /**
+     * @brief Inequality comparison for matrices.
+     *
+     * Logical negation of operator==().
+     *
+     * @tparam T element type stored in the matrices
+     * @param lhs const Matrix<T>& left-hand operand
+     * @param rhs const Matrix<T>& right-hand operand
+     * @return bool true if matrices differ in shape or in at least one element
+     *
+     * @see operator==()
+     */
     template <typename T>
     bool operator!=(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-    // Relational operators: DISABLED for pointer T (e.g., void*, const void*)
-    template <typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
+
+    /**
+     * @brief Lexicographic "less-than" comparison between two matrices.
+     *
+     * Enabled only if T is NOT a pointer type. For pointer element types
+     * (e.g. void*, int*), this operator is SFINAE-disabled in the declaration,
+     * so code like `Matrix<int*>::operator<` will fail at compile time.
+     *
+     * Ordering is defined in three steps:
+     *
+     *   1. Compare number of rows. A matrix with fewer rows is considered "less".
+     *   2. If the row counts are equal, compare number of columns. A matrix with
+     *      fewer columns is considered "less".
+     *   3. If both shapes match exactly, compare elements in row-major order:
+     *      (0,0), (0,1), … (0,n-1), (1,0), … etc. The first position `(i,j)`
+     *      where `lhs(i,j) != rhs(i,j)` decides the ordering via `lhs(i,j) < rhs(i,j)`.
+     *
+     * If all elements compare equal, then `lhs < rhs` is false.
+     *
+     * @tparam T element type (must not be a pointer type)
+     * @param lhs const Matrix<T>& left-hand operand
+     * @param rhs const Matrix<T>& right-hand operand
+     * @return bool true if lhs is considered lexicographically less than rhs
+     *
+     * @see operator>()
+     * @see operator<=()
+     * @see operator>=()
+     */
+    template <typename T,
+              typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
     bool operator<(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-    template <typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
+    /**
+     * @brief Lexicographic "greater-than" comparison between two matrices.
+     *
+     * Enabled only if T is NOT a pointer type.
+     *
+     * Defined as `(rhs < lhs)`.
+     *
+     * @tparam T element type (must not be a pointer type)
+     * @param lhs const Matrix<T>& left-hand operand
+     * @param rhs const Matrix<T>& right-hand operand
+     * @return bool true if lhs is considered lexicographically greater than rhs
+     *
+     * @see operator<()
+     */
+    template <typename T,
+              typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
     bool operator>(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-    template <typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
+    /**
+     * @brief Lexicographic "less-than-or-equal" comparison between two matrices.
+     *
+     * Enabled only if T is NOT a pointer type.
+     *
+     * Defined as `!(rhs < lhs)`.
+     *
+     * @tparam T element type (must not be a pointer type)
+     * @param lhs const Matrix<T>& left-hand operand
+     * @param rhs const Matrix<T>& right-hand operand
+     * @return bool true if lhs is not lexicographically greater than rhs
+     *
+     * @see operator<()
+     * @see operator>()
+     */
+    template <typename T,
+              typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
     bool operator<=(const Matrix<T>& lhs, const Matrix<T>& rhs);
 
-    template <typename T, typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
+    /**
+     * @brief Lexicographic "greater-than-or-equal" comparison between two matrices.
+     *
+     * Enabled only if T is NOT a pointer type.
+     *
+     * Defined as `!(lhs < rhs)`.
+     *
+     * @tparam T element type (must not be a pointer type)
+     * @param lhs const Matrix<T>& left-hand operand
+     * @param rhs const Matrix<T>& right-hand operand
+     * @return bool true if lhs is not lexicographically less than rhs
+     *
+     * @see operator<()
+     * @see operator>()
+     */
+    template <typename T,
+              typename = typename std::enable_if<!std::is_pointer<T>::value>::type>
     bool operator>=(const Matrix<T>& lhs, const Matrix<T>& rhs);
+
+
+    /**
+     * @brief Stream insertion operator for Matrix.
+     *
+     * Writes a human-readable representation of the matrix to an output stream,
+     * primarily for debugging / logging / diagnostic use.
+     *
+     * The exact formatting is the same as Matrix::toString(), and is not
+     * guaranteed to be stable between library versions.
+     *
+     * Example:
+     * @code
+     * Matrix<int> m(2,2);
+     * m.fill(7);
+     * std::cout << "m =\n" << m << std::endl;
+     * @endcode
+     *
+     * @tparam T element type
+     * @param os std::ostream&  destination stream
+     * @param mat const Matrix<T>& matrix to print
+     * @return std::ostream& reference to @p os, to allow chaining
+     *
+     * @see Matrix::toString()
+     */
+    template <typename T>
+    std::ostream& operator<<(std::ostream& os, const Matrix<T>& mat);
+
+
 } // namespace bml
 
 #endif // BML_MATRIX_HPP

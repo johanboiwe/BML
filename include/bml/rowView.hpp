@@ -5,7 +5,7 @@
 #include "bml/boolRef.hpp"
 
 /**
- * @file
+ * @file bml/rowView.hpp
  * @brief Row-only, non-owning views over matrix storage (generic and bool-specialised).
  *
  * @note Views do not own memory; the backing storage must outlive the view.
@@ -207,7 +207,7 @@ public:
 
 private:
     const std::uint8_t* row;  ///< Pointer to first byte (non-owning).
-    std::uint32_t       length;
+    std::uint32_t       length; ///< Length of row.
 };
 
 } // namespace bml

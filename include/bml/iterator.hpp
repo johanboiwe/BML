@@ -1,6 +1,5 @@
 #ifndef ITERATOR_HPP
 #define ITERATOR_HPP
-#include "bml/export.hpp"
 #include "bml/matrix.hpp"
 
 // Helper aliases: deduce element access types

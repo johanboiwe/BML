@@ -1,11 +1,35 @@
-//
-// Created by johan on 2025-09-26.
-//
-
 #ifndef BML_BOOLREF_HPP
 #define BML_BOOLREF_HPP
+
 #include <cstdint>
 #include <iostream>
+
+/**
+ * @file bml/boolRef.hpp
+ * @brief Non-owning proxy for a single boolean cell in a Matrix<bool>.
+ *
+ * BML stores Matrix<bool> as bytes (uint8_t) instead of C++ bool, to avoid
+ * bit-packing and other surprises. BoolRef acts like a reference to one of
+ * those bytes:
+ *
+ * - You can read it in a boolean context:
+ *   @code
+ *   BoolRef br = row[3];
+ *   if (br) { ... }
+ *   @endcode
+ *
+ * - You can assign to it:
+ *   @code
+ *   br = true;
+ *   br &= false;
+ *   @endcode
+ *
+ * - It does NOT own the memory. If the parent Matrix<bool> is destroyed,
+ *   any BoolRef pointing into it becomes invalid.
+ *
+ * Users normally don't create BoolRef directly; it comes from
+ * Matrix<bool>::operator[] / iterators.
+ */
 
 namespace bml
 {
@@ -20,12 +44,15 @@ namespace bml
 
         /**
          * @brief Copy-construct from another proxy (aliases the same storage).
+         *
+         * After this, both BoolRef objects still refer to the same underlying byte.
+         * No deep copy is made.
          */
         BoolRef(const BoolRef& other) = default;
 
         /**
          * @brief Implicit conversion to bool (read).
-         * @return @c true if the referenced byte is non-zero; otherwise @c false.
+         * @return true if the referenced byte is non-zero; otherwise false.
          */
         explicit operator bool() const noexcept;
 
@@ -38,82 +65,90 @@ namespace bml
 
         /**
          * @brief Assign from another proxy (read then write).
+         * @param o Source proxy.
          * @return *this
          */
         BoolRef& operator=(const BoolRef& o) noexcept;
 
         /**
          * @brief Bitwise-AND assign with a bool.
+         * @param v Value to AND in.
          * @return *this
          */
         BoolRef& operator&=(bool v) noexcept;
 
         /**
          * @brief Bitwise-OR assign with a bool.
+         * @param v Value to OR in.
          * @return *this
          */
         BoolRef& operator|=(bool v) noexcept;
 
         /**
          * @brief Bitwise-XOR assign with a bool.
+         * @param v Value to XOR in.
          * @return *this
          */
         BoolRef& operator^=(bool v) noexcept;
 
-        explicit operator bool() noexcept;
-
     private:
-        std::uint8_t* p_; ///< Pointer to the referenced storage byte (non-owning).
-    };// boolRef
+        /// Pointer to the referenced storage byte (non-owning). Guaranteed non-null after construction.
+        std::uint8_t* p_;
+    }; // class BoolRef
+
 
     // ---------- Free comparison & stream operators ----------
 
     /**
-     * @brief Equality between two @c BoolRef proxies.
+     * @brief Equality between two BoolRef proxies.
      * @param a Left-hand proxy.
      * @param b Right-hand proxy.
-     * @return @c true iff both read the same boolean value.
+     * @return true iff both read the same boolean value.
      */
     bool operator==(const BoolRef& a, const BoolRef& b) noexcept;
 
     /**
-     * @brief Inequality between two @c BoolRef proxies.
+     * @brief Inequality between two BoolRef proxies.
      * @param a Left-hand proxy.
      * @param b Right-hand proxy.
-     * @return @c true iff the read boolean values differ.
+     * @return true iff the read boolean values differ.
      */
     bool operator!=(const BoolRef& a, const BoolRef& b) noexcept;
 
     /**
-     * @brief Equality between a @c BoolRef and a @c bool (proxy on the left).
-     * @param a Left-hand @c BoolRef proxy.
-     * @param b Right-hand @c bool value.
-     * @return @c true iff @p a reads the same value as @p b.
+     * @brief Equality between a BoolRef and a bool (proxy on the left).
+     * @param a Left-hand BoolRef proxy.
+     * @param b Right-hand bool value.
+     * @return true iff @p a reads the same value as @p b.
      */
     bool operator==(const BoolRef& a, bool b) noexcept;
 
     /**
-     * @brief Inequality between a @c BoolRef and a @c bool (proxy on the left).
-     * @param a Left-hand @c BoolRef proxy.
-     * @param b Right-hand @c bool value.
-     * @return @c true iff @p a and @p b differ.
+     * @brief Inequality between a BoolRef and a bool (proxy on the left).
+     * @param a Left-hand BoolRef proxy.
+     * @param b Right-hand bool value.
+     * @return true iff @p a and @p b differ.
      */
     bool operator!=(const BoolRef& a, bool b) noexcept;
 
     /**
-     * @brief Equality between a @c bool and a @c BoolRef (proxy on the right).
-     * @param a Left-hand @c bool value.
-     * @param b Right-hand @c BoolRef proxy.
-     * @return @c true iff @p a equals the value read from @p b.
-     * @note Enables expressions like @c std::_Bit_reference == BoolRef (LHS converts to @c bool).
+     * @brief Equality between a bool and a BoolRef (proxy on the right).
+     * @param a Left-hand bool value.
+     * @param b Right-hand BoolRef proxy.
+     * @return true iff @p a equals the value read from @p b.
+     *
+     * This lets you write code like:
+     * @code
+     * if (true == matrixBool[r][c]) { ... }
+     * @endcode
      */
     bool operator==(bool a, const BoolRef& b) noexcept;
 
     /**
-     * @brief Inequality between a @c bool and a @c BoolRef (proxy on the right).
-     * @param a Left-hand @c bool value.
-     * @param b Right-hand @c BoolRef proxy.
-     * @return @c true iff @p a and @p b differ.
+     * @brief Inequality between a bool and a BoolRef (proxy on the right).
+     * @param a Left-hand bool value.
+     * @param b Right-hand BoolRef proxy.
+     * @return true iff @p a and @p b differ.
      */
     bool operator!=(bool a, const BoolRef& b) noexcept;
 
@@ -121,12 +156,12 @@ namespace bml
      * @brief Stream output of the referenced boolean value.
      * @param os Output stream.
      * @param br Proxy to print.
-     * @return @p os
+     * @return os
+     *
+     * Prints `true` or `false` just like a normal bool.
      */
     std::ostream& operator<<(std::ostream& os, BoolRef br);
 
+} // namespace bml
 
-
-} // bml
-
-#endif //BML_BOOLREF_HPP
+#endif // BML_BOOLREF_HPP

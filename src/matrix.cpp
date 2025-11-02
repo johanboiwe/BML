@@ -1,5 +1,4 @@
-#include "bml/matrix.hpp"
-
+#include "bml/bml.hpp"
 #include <cstring>
 #include <limits>
 #include <sstream>
@@ -182,6 +181,18 @@ namespace bml
         data.resize(static_cast<std::size_t>(numRows)* static_cast<std::size_t>(numCols));
     }
 
+    template <typename T>
+    Matrix<T>& Matrix<T>::operator=(const Matrix& other)
+    {
+        if (this != &other)
+        {
+            rows = other.rows;
+            cols = other.cols;
+            data = other.data; // deep copy
+        }
+        return *this;
+    }
+
     template<class T>
     Matrix<T>::Matrix(Matrix<T>&& other) noexcept
         : data(std::move(other.data)),  // <-- rename to your vector member
@@ -195,7 +206,7 @@ namespace bml
     template<class T>
     Matrix<T>& Matrix<T>::operator=(Matrix<T>&& other) noexcept {
         if (this != &other) {
-            data = std::move(other.data);   // <-- rename to your vector member
+            data = std::move(other.data);
             rows = other.rows;
             cols = other.cols;
             other.rows = other.cols = 0;
@@ -1556,5 +1567,12 @@ void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t b
         for (bool cell : data)
             if (cell) return false;       // first true => not none
         return true;                    // empty matrix returns true
+    }
+
+    template <typename T>
+std::ostream& operator<<(std::ostream& os, const Matrix<T>& mat)
+    {
+        os << mat.toString();
+        return os;
     }
 }
