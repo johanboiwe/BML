@@ -5,7 +5,7 @@
 #include <type_traits>
 
 /**
- * @file BMLTypeTraits.hpp
+ * @file bml/typeTraits.hpp
  * @brief Internal type traits used by BML for storage layout and operator enablement.
  *
  * This header provides:

@@ -31,11 +31,7 @@ namespace bml
         return *this = (static_cast<bool>(*this) ^ v);
     }
 
-    BoolRef::operator bool() noexcept
-    {
-        if (*p_) return true;
-        return false;
-    }
+
 
     bool operator==(const BoolRef& a, const BoolRef& b) noexcept
     {

@@ -101,7 +101,7 @@ namespace bml
          *
          * @param other Matrix to copy from.
          */
-        Matrix(const Matrix&) = default;
+        Matrix(const Matrix& other) = default;
 
         /**
          * @brief Copy assignment operator.
@@ -759,7 +759,7 @@ namespace bml
         ///       and is deleted to cause a compile-time error.
         template <typename U = T>
         std::enable_if_t<!bml_is_math_arithmetic<U>::value, Matrix<T>>
-        operator+(const Matrix<T>&) const = delete;
+        operator+(const Matrix<T>& other) const = delete;
 
 
         /**
