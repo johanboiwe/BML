@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <type_traits>
+#include "../include/stringStorage.hpp"
 
 // -----------------------------------------------------------------------------
 // Pull in template *definitions* so explicit instantiations link from here.
@@ -15,6 +16,8 @@
 #include "iterator.cpp"
 #include "rowView.cpp"
 #include "boolRef.cpp"
+#include "stringStorage.cpp"
+
 
 namespace bml
 {
