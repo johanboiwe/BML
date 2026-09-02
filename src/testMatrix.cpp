@@ -2,7 +2,7 @@
 // Build: clang++ -std=c++17 -O2 -Iinclude test_matrix.cpp -o test_matrix
 // (Adjust include path to where your BML headers live.)
 
-#include "bml/bml.hpp"           // assumes this aggregates Matrix, traits, TraversalType, etc.
+#include "../include/bml.hpp"           // assumes this aggregates Matrix, traits, TraversalType, etc.
 
 #include <algorithm>
 #include <chrono>

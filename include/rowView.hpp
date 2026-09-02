@@ -2,7 +2,7 @@
 #define ROWVIEW_HPP
 
 #include <cstdint>
-#include "bml/boolRef.hpp"
+#include "boolRef.hpp"
 
 /**
  * @file bml/rowView.hpp

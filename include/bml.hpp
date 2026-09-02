@@ -27,16 +27,16 @@
  * faster compile times, but <bml/BML.hpp> is the "just give me BML" option.
  */
 
-#include "bml/export.hpp"          // BML_API / BML_HIDDEN visibility macros
-#include "bml/platform.hpp"        // 64-bit platform check
-#include "bml/version.hpp"         // version macros
+#include "export.hpp"          // BML_API / BML_HIDDEN visibility macros
+#include "platform.hpp"        // 64-bit platform check
+#include "version.hpp"         // version macros
 
-#include "bml/traversal.hpp"       // bml::TraversalType enum (traversal order)
+#include "traversal.hpp"       // bml::TraversalType enum (traversal order)
 
-#include "bml/matrix.hpp"          // Matrix<T>
-#include "bml/iterator.hpp"        // Iterators / iteration helpers
-#include "bml/rowView.hpp"         // RowView / ColView proxies
-#include "bml/boolRef.hpp"         // BoolRef proxy for Matrix<bool>
-#include "bml/stringStorage.hpp"   // StringStorage helper for Matrix<std::string>
+#include "matrix.hpp"          // Matrix<T>
+#include "iterator.hpp"        // Iterators / iteration helpers
+#include "rowView.hpp"         // RowView / ColView proxies
+#include "boolRef.hpp"         // BoolRef proxy for Matrix<bool>
+#include "stringStorage.hpp"   // StringStorage helper for Matrix<std::string>
 
 #endif // BML_HPP

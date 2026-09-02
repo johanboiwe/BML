@@ -28,10 +28,10 @@
 #include <cstdint>
 #include <tuple>
 #include <utility>     // std::declval
-#include "bml/matrix.hpp"
-#include "bml/rowView.hpp"
-#include "bml/boolRef.hpp"
-#include "bml/traversal.hpp"
+#include "../include/matrix.hpp"
+#include "../include/rowView.hpp"
+#include "../include/boolRef.hpp"
+#include "../include/traversal.hpp"
 
 namespace bml {
 

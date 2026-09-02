@@ -1,15 +1,15 @@
 #ifndef BML_MATRIX_HPP
 #define BML_MATRIX_HPP
 
-#include "bml/export.hpp"
-#include "bml/typeTraits.hpp"
-#include "bml/rowView.hpp"
-#include "bml/traversal.hpp"
+#include "export.hpp"
+#include "typeTraits.hpp"
+#include "rowView.hpp"
+#include "traversal.hpp"
 
-#include <vector>
 #include <functional>
 #include <string>
 #include <type_traits>   // ensure enable_if / is_* are available
+#include <vector>
 
 namespace bml
 {

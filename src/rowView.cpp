@@ -1,7 +1,7 @@
-#include "../include/bml/rowView.hpp"
+#include "../include/rowView.hpp"
 #include <stdexcept>   // std::out_of_range
 
-#include "bml/boolRef.hpp"
+#include "../include/boolRef.hpp"
 
 namespace bml
 {

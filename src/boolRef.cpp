@@ -2,7 +2,7 @@
 // Created by johan on 2025-09-26.
 //
 
-#include "bml/boolRef.hpp"
+#include "../include/boolRef.hpp"
 
 namespace bml
 {
