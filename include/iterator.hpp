@@ -27,7 +27,7 @@
 
 #include <cstdint>
 #include <tuple>
-#include <utility>     // std::declval
+#include <utility>
 #include "../include/matrix.hpp"
 #include "../include/rowView.hpp"
 #include "../include/boolRef.hpp"

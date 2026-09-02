@@ -22,9 +22,6 @@
  *     // ...
  * }
  * @endcode
- *
- * You can also include individual headers (e.g. <bml/matrix.hpp>) if you want
- * faster compile times, but <bml/BML.hpp> is the "just give me BML" option.
  */
 
 #include "export.hpp"          // BML_API / BML_HIDDEN visibility macros

@@ -40,9 +40,7 @@
  *
  * BML_API void initialiseBML();
  * @endcode
- *
- * You normally do NOT define these macros yourself in user code. They are set
- * by the build system (CMake) when building or consuming BML.
+
  */
 
 #if defined(_WIN32)

@@ -8,7 +8,7 @@
 
 #include <functional>
 #include <string>
-#include <type_traits>   // ensure enable_if / is_* are available
+#include <type_traits>
 #include <vector>
 
 namespace bml
