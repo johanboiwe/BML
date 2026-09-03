@@ -59,7 +59,13 @@ target_link_libraries(testMatrix_static
         PRIVATE
         BML_static
 )
+set_target_properties(BML_static PROPERTIES
+        OUTPUT_NAME BML
+)
 
+set_target_properties(BML_shared PROPERTIES
+        OUTPUT_NAME BML
+)
 
 # ---------- LTO ----------
 
@@ -148,3 +154,19 @@ install(
         DIRECTORY include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/BML
 )
+
+# ---------- Uninstall ----------
+
+if(NOT TARGET uninstall)
+    configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/uninstall.cmake.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake"
+            IMMEDIATE
+            @ONLY
+    )
+
+    add_custom_target(uninstall
+            COMMAND ${CMAKE_COMMAND} -P
+            "${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake"
+    )
+endif()
