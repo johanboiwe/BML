@@ -1,0 +1,899 @@
+# BML Installation Guide
+
+BML is a C++17 matrix library built with CMake. It supports both static and shared libraries and is intended to build with GCC, Clang and MSVC.
+
+## Contents
+
+- [Requirements](#requirements)
+- [Repository Structure](#repository-structure)
+- [Configuring BML](#configuring-bml)
+- [Building BML](#building-bml)
+- [Running the Tests](#running-the-tests)
+- [Building Shared and Static Libraries](#building-shared-and-static-libraries)
+- [LTO / IPO](#lto--ipo)
+- [Installing BML](#installing-bml)
+- [Using an Installed BML](#using-an-installed-bml)
+- [Windows DLL Usage](#windows-dll-usage)
+- [Windows Symbol Exports](#windows-symbol-exports)
+- [Custom Installation Prefix](#custom-installation-prefix)
+- [Cleaning the Build](#cleaning-the-build)
+- [Recommended Release Builds](#recommended-release-builds)
+
+---
+
+# Requirements
+
+## General
+
+BML requires:
+
+- C++17-compatible compiler
+- CMake 3.18 or newer
+- Git
+
+BML is written in C++ and does not require a separate runtime or scripting language.
+
+## Linux
+
+On Debian/Ubuntu, the basic build environment can be installed with:
+
+```bash
+sudo apt update
+sudo apt install build-essential cmake ninja-build git
+```
+
+Both GCC and Clang can be used.
+
+For example, to use Clang explicitly:
+
+```bash
+cmake -S . -B build \
+    -G Ninja \
+    -DCMAKE_CXX_COMPILER=clang++
+```
+
+## Windows
+
+A Microsoft Visual C++ installation with C++ development support is required.
+
+The Visual Studio C++ workload must include:
+
+- MSVC
+- Windows SDK
+- C++ build tools
+
+CMake can generate a Visual Studio solution automatically:
+
+```powershell
+cmake -S . -B build
+```
+
+Visual Studio generators are multi-configuration generators. Therefore, `CMAKE_BUILD_TYPE` is not used to select Debug or Release when building with Visual Studio.
+
+---
+
+# Repository Structure
+
+The BML source tree is organised approximately as follows:
+
+```text
+BML/
+├── CMakeLists.txt
+├── include/
+│   └── BML/
+│       ├── ...
+│       └── export.hpp
+├── src/
+│   ├── instantiations.cpp
+│   ├── matrix.cpp
+│   ├── testMatrix.cpp
+│   └── ...
+└── ...
+```
+
+Public headers are located below:
+
+```text
+include/BML/
+```
+
+The implementation is located below:
+
+```text
+src/
+```
+
+`src/instantiations.cpp` contains the library's explicit template instantiations.
+
+---
+
+# Configuring BML
+
+A build directory should normally be kept separate from the source tree.
+
+## Linux — Ninja
+
+For a Release build:
+
+```bash
+cmake -S . -B build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release
+```
+
+For a Debug build:
+
+```bash
+cmake -S . -B build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Debug
+```
+
+## Windows — Visual Studio
+
+Configure with:
+
+```powershell
+cmake -S . -B build
+```
+
+CMake will select the installed Visual Studio generator and compiler.
+
+The resulting directory contains separate configurations such as:
+
+```text
+build/
+├── Debug/
+└── Release/
+```
+
+---
+
+# Build Options
+
+BML provides the following CMake options.
+
+## BML_BUILD_SHARED
+
+Controls which library the `BML` alias refers to.
+
+Default:
+
+```text
+BML_BUILD_SHARED=ON
+```
+
+To select the shared library:
+
+```bash
+cmake -S . -B build \
+    -DBML_BUILD_SHARED=ON
+```
+
+To select the static library:
+
+```bash
+cmake -S . -B build \
+    -DBML_BUILD_SHARED=OFF
+```
+
+The underlying `BML_shared` and `BML_static` targets are available independently.
+
+## BML_RUN_TESTS
+
+Controls whether the tests are included in a normal build.
+
+Default:
+
+```text
+BML_RUN_TESTS=ON
+```
+
+Enable:
+
+```bash
+cmake -S . -B build \
+    -DBML_RUN_TESTS=ON
+```
+
+Disable:
+
+```bash
+cmake -S . -B build \
+    -DBML_RUN_TESTS=OFF
+```
+
+When enabled, the normal build runs tests for both the shared and static libraries.
+
+## BML_ENABLE_LTO
+
+If available in the current CMake configuration, this option controls BML's LTO/IPO support.
+
+Enable:
+
+```bash
+cmake -S . -B build \
+    -DBML_ENABLE_LTO=ON
+```
+
+Disable:
+
+```bash
+cmake -S . -B build \
+    -DBML_ENABLE_LTO=OFF
+```
+
+When LTO is enabled, BML checks whether the selected compiler supports CMake's interprocedural optimisation mechanism before enabling it. CMake's `CheckIPOSupported` module is specifically intended for this purpose and supports Visual Studio generators as well.
+
+---
+
+# Building BML
+
+## Linux
+
+After configuring:
+
+```bash
+cmake --build build
+```
+
+For a parallel build:
+
+```bash
+cmake --build build --parallel
+```
+
+## Windows
+
+Debug:
+
+```powershell
+cmake --build build --config Debug
+```
+
+Release:
+
+```powershell
+cmake --build build --config Release
+```
+
+Parallel Release build:
+
+```powershell
+cmake --build build --config Release --parallel
+```
+
+---
+
+# Running the Tests
+
+BML contains functional and stress tests covering the supported matrix types and operations.
+
+With:
+
+```text
+BML_RUN_TESTS=ON
+```
+
+the normal build includes both test targets.
+
+A successful test run ends with:
+
+```text
+[BML TEST] All tests completed successfully.
+```
+
+## Linux
+
+The test executables can also be run directly:
+
+```bash
+./build/testMatrix_shared
+./build/testMatrix_static
+```
+
+## Windows
+
+For a Release build:
+
+```powershell
+.\build\Release\testMatrix_shared.exe
+.\build\Release\testMatrix_static.exe
+```
+
+For a Debug build:
+
+```powershell
+.\build\Debug\testMatrix_shared.exe
+.\build\Debug\testMatrix_static.exe
+```
+
+Both the shared and static tests should pass before an installation is considered successful.
+
+---
+
+# Building Shared and Static Libraries
+
+BML produces two actual library targets:
+
+```text
+BML_shared
+BML_static
+```
+
+The `BML` target is an alias selecting one of these targets according to `BML_BUILD_SHARED`.
+
+## Linux
+
+The shared library is normally:
+
+```text
+libBML.so
+```
+
+The static library is:
+
+```text
+libBML.a
+```
+
+## Windows
+
+The shared library consists of:
+
+```text
+BML.dll
+BML.lib
+```
+
+`BML.dll` contains the actual shared-library implementation.
+
+`BML.lib` is the MSVC import library used when linking an application against the DLL.
+
+The static library is:
+
+```text
+BML_static.lib
+```
+
+The static library contains the object code required for static linking.
+
+---
+
+# LTO / IPO
+
+BML can use interprocedural optimisation (IPO), commonly referred to as link-time optimisation (LTO).
+
+The CMake configuration checks compiler support before enabling IPO on the relevant targets.
+
+The configuration reports:
+
+```text
+Building with LTO
+```
+
+when LTO is enabled and supported.
+
+LTO is compiler-dependent:
+
+- GCC uses GCC LTO.
+- Clang uses LLVM LTO.
+- MSVC uses link-time code generation (LTCG).
+
+LTO can make intermediate object files and static libraries considerably larger. The size of a static library is therefore not a reliable indication of the size of the final executable.
+
+The final linked executable or shared library is where the optimisation is resolved.
+
+---
+
+# Installing BML
+
+BML uses CMake's standard installation mechanism and `GNUInstallDirs`.
+
+Install the configured build with:
+
+```bash
+sudo cmake --install build
+```
+
+The default installation prefix is normally:
+
+```text
+/usr/local
+```
+
+On a typical Linux installation this results in files under:
+
+```text
+/usr/local/include/BML/
+```
+
+and:
+
+```text
+/usr/local/lib/
+```
+
+The exact library directory is determined by CMake's installation-directory configuration.
+
+Using relative installation destinations allows the installation prefix to be changed without hard-coding `/usr/local` into the project.
+
+---
+
+# Using an Installed BML
+
+After installation, public BML headers can be included normally:
+
+```cpp
+#include <BML/Matrix.hpp>
+```
+
+The exact header names depend on the part of the BML API being used.
+
+For a standard `/usr/local` installation, GCC can normally find the headers and libraries without additional include or library paths.
+
+For a non-standard installation prefix, specify the appropriate paths.
+
+For example:
+
+```bash
+g++ -std=c++17 main.cpp \
+    -I/path/to/prefix/include \
+    -L/path/to/prefix/lib \
+    -lBML \
+    -o myprogram
+```
+
+---
+
+# Static Linking
+
+To link against the static library on Linux:
+
+```bash
+g++ -std=c++17 main.cpp \
+    -I/usr/local/include \
+    -L/usr/local/lib \
+    -lBML \
+    -o myprogram
+```
+
+The static library contains the BML implementation directly in the resulting executable.
+
+On Windows, link against:
+
+```text
+BML_static.lib
+```
+
+The resulting executable does not require `BML.dll` for BML itself.
+
+---
+
+# Shared Linking
+
+On Linux:
+
+```bash
+g++ -std=c++17 main.cpp \
+    -I/usr/local/include \
+    -L/usr/local/lib \
+    -lBML \
+    -o myprogram
+```
+
+If `/usr/local/lib` is not already known to the dynamic linker, update the linker cache:
+
+```bash
+sudo ldconfig
+```
+
+Alternatively, for temporary testing:
+
+```bash
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+```
+
+The resulting program requires:
+
+```text
+libBML.so
+```
+
+at runtime.
+
+---
+
+# Windows DLL Usage
+
+A Windows application using the shared BML library requires:
+
+```text
+BML.dll
+```
+
+at runtime.
+
+The application is linked against:
+
+```text
+BML.lib
+```
+
+A typical deployment therefore contains:
+
+```text
+myprogram.exe
+BML.dll
+```
+
+The import library:
+
+```text
+BML.lib
+```
+
+is required when linking the application but normally does not need to be distributed with the finished application.
+
+For static linking, use:
+
+```text
+BML_static.lib
+```
+
+and no BML DLL is required at runtime.
+
+---
+
+# Windows Symbol Exports
+
+BML uses explicit symbol visibility control for shared-library builds.
+
+Public API declarations use:
+
+```cpp
+BML_API
+```
+
+The export mechanism is defined in:
+
+```text
+include/BML/export.hpp
+```
+
+When building the Windows DLL, CMake defines:
+
+```text
+BML_BUILDING_DLL
+```
+
+which causes public symbols to be exported with:
+
+```cpp
+__declspec(dllexport)
+```
+
+Consumers of the DLL use:
+
+```text
+BML_USE_DLL
+```
+
+which causes the declarations to use:
+
+```cpp
+__declspec(dllimport)
+```
+
+This explicit export mechanism is necessary for Windows DLLs.
+
+Public classes, functions and operators that form part of the shared-library ABI must therefore be marked appropriately with `BML_API`.
+
+---
+
+# Inspecting the Windows DLL
+
+Visual Studio provides `dumpbin` for inspecting the generated binaries.
+
+To list exported DLL symbols:
+
+```powershell
+dumpbin /exports BML.dll
+```
+
+To search for particular BML symbols:
+
+```powershell
+dumpbin /exports BML.dll |
+    Select-String "Matrix|BoolRef|RowView|StringStorage"
+```
+
+To inspect the static library:
+
+```powershell
+dumpbin /linkermember:2 BML_static.lib
+```
+
+To inspect the import library:
+
+```powershell
+dumpbin /linkermember:2 BML.lib
+```
+
+---
+
+# Custom Installation Prefix
+
+The installation prefix can be changed during configuration.
+
+For example:
+
+```bash
+cmake -S . -B build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+```
+
+Build and install:
+
+```bash
+cmake --build build
+cmake --install build
+```
+
+The resulting installation will be placed below:
+
+```text
+$HOME/.local/
+```
+
+This allows BML to be installed without root privileges.
+
+Another common choice is:
+
+```text
+/opt/BML
+```
+
+For example:
+
+```bash
+cmake -S . -B build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/opt/BML
+```
+
+Then:
+
+```bash
+sudo cmake --install build
+```
+
+---
+
+# Cleaning the Build
+
+To completely remove generated build files:
+
+## Linux
+
+```bash
+rm -rf build
+```
+
+## Windows PowerShell
+
+```powershell
+Remove-Item -Recurse -Force build
+```
+
+A clean configuration can then be created again:
+
+```bash
+cmake -S . -B build
+```
+
+A clean build is recommended after changing fundamental compiler or CMake configuration.
+
+---
+
+# Recommended Release Builds
+
+## Linux
+
+For a clean Release build with Ninja:
+
+```bash
+rm -rf build
+
+cmake -S . -B build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBML_BUILD_SHARED=ON \
+    -DBML_RUN_TESTS=ON \
+    -DBML_ENABLE_LTO=ON
+
+cmake --build build --parallel
+```
+
+Run the tests:
+
+```bash
+./build/testMatrix_shared
+./build/testMatrix_static
+```
+
+Then install:
+
+```bash
+sudo cmake --install build
+```
+
+## Windows
+
+For a clean Visual Studio Release build:
+
+```powershell
+Remove-Item -Recurse -Force build
+
+cmake -S . -B build `
+    -DBML_BUILD_SHARED=ON `
+    -DBML_RUN_TESTS=ON `
+    -DBML_ENABLE_LTO=ON
+
+cmake --build build --config Release --parallel
+```
+
+Run the tests:
+
+```powershell
+.\build\Release\testMatrix_shared.exe
+.\build\Release\testMatrix_static.exe
+```
+
+Then inspect the generated DLL if required:
+
+```powershell
+dumpbin /exports .\build\Release\BML.dll
+```
+
+---
+
+# Build Output
+
+A successful Windows Release build is expected to contain files similar to:
+
+```text
+build/
+└── Release/
+    ├── BML.dll
+    ├── BML.exp
+    ├── BML.lib
+    ├── BML_static.lib
+    ├── testMatrix_shared.exe
+    └── testMatrix_static.exe
+```
+
+A Linux build normally produces:
+
+```text
+build/
+├── libBML.so
+├── libBML.a
+├── testMatrix_shared
+└── testMatrix_static
+```
+
+The exact generated files can vary slightly between generators and platforms.
+
+---
+
+# Troubleshooting
+
+## CMake cannot find a compiler
+
+Verify that the compiler is installed and available:
+
+```bash
+g++ --version
+```
+
+or:
+
+```bash
+clang++ --version
+```
+
+On Windows, configure from a Visual Studio Developer PowerShell or use a Visual Studio generator supported by the installed CMake.
+
+## LTO is not available
+
+BML checks compiler support before enabling IPO/LTO.
+
+If the compiler does not support the required IPO configuration, CMake reports the reason and does not enable it.
+
+LTO is an optimisation feature and is not required for BML to function correctly.
+
+## Windows DLL links but symbols are missing
+
+Check the DLL's export table:
+
+```powershell
+dumpbin /exports BML.dll
+```
+
+Public API classes/functions that need to cross the DLL boundary must be declared with:
+
+```cpp
+BML_API
+```
+
+Check that the shared-library target is being built with:
+
+```text
+BML_BUILDING_DLL
+```
+
+and that the application receives:
+
+```text
+BML_USE_DLL
+```
+
+## Tests fail after changing the build configuration
+
+Perform a clean build:
+
+```bash
+rm -rf build
+```
+
+or in PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force build
+```
+
+Then configure and build again.
+
+---
+
+# Summary
+
+A standard Linux Release build is:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+A standard Windows Release build is:
+
+```powershell
+cmake -S . -B build
+cmake --build build --config Release --parallel
+```
+
+Run both shared and static tests before installation.
+
+Install with:
+
+```bash
+sudo cmake --install build
+```
+
+BML supports both:
+
+```text
+Shared:
+    Linux:   libBML.so
+    Windows: BML.dll + BML.lib
+
+Static:
+    Linux:   libBML.a
+    Windows: BML_static.lib
+```
+
+The same BML source tree is therefore usable for both static and shared builds across the supported platforms.
