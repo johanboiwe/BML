@@ -24,7 +24,7 @@ namespace bml
  * No bounds checks are performed unless stated; UB if preconditions are violated.
  */
 template<typename T>
-class RowView
+BML_API class RowView
 {
 public:
     /// @brief Construct an empty row view (size()==0, data()==nullptr).
@@ -81,7 +81,7 @@ private:
  * Elements read as @c bool, and write via @ref BoolRef which stores @c 0/@c 1 in a byte.
  * @note No bit-packing; each logical bool occupies one byte in the backing store.
  */
-template<>class RowView<bool>
+template<>class BML_API RowView<bool>
 {
 public:
     /// @brief Construct an empty row view (size()==0).
@@ -156,7 +156,7 @@ private:
  *
  * Read-only view; element access yields @c bool values. No mutation possible.
  */
-template<> class RowView<const bool>
+template<> class BML_API RowView<const bool>
 {
 public:
     /// @brief Construct an empty const row view (size()==0).
