@@ -59,9 +59,15 @@ target_link_libraries(testMatrix_static
         PRIVATE
         BML_static
 )
-set_target_properties(BML_static PROPERTIES
-        OUTPUT_NAME BML
-)
+if(WIN32)
+    set_target_properties(BML_static PROPERTIES
+            OUTPUT_NAME BML_static
+    )
+else()
+    set_target_properties(BML_static PROPERTIES
+            OUTPUT_NAME BML
+    )
+endif()
 
 set_target_properties(BML_shared PROPERTIES
         OUTPUT_NAME BML
