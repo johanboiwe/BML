@@ -20,7 +20,7 @@ namespace bml
 
 
     /**
-     * @brief Matrix class. Internaly stores values flat, but present them as 2d.
+     * @brief Matrix class. Internally stores values flat, but present them as 2d.
     * @tparam T can be bool, {u,}int{8,16,32,64}_t, "
             "float/double/long double, char, std::string)"
      */

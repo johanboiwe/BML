@@ -3,9 +3,10 @@
 
 #include <cstdint>
 #include <iostream>
+#include "export.hpp"
 
 /**
- * @file bml/boolRef.hpp
+ * @file boolRef.hpp
  * @brief Non-owning proxy for a single boolean cell in a Matrix<bool>.
  *
  * BML stores Matrix<bool> as bytes (uint8_t) instead of C++ bool, to avoid
@@ -33,7 +34,7 @@
 
 namespace bml
 {
-    class BoolRef {
+    class BML_API BoolRef {
     public:
         /**
          * @brief Construct a proxy for a byte-backed bool.
@@ -105,7 +106,7 @@ namespace bml
      * @param b Right-hand proxy.
      * @return true iff both read the same boolean value.
      */
-    bool operator==(const BoolRef& a, const BoolRef& b) noexcept;
+    BML_API bool operator==(const BoolRef& a, const BoolRef& b) noexcept;
 
     /**
      * @brief Inequality between two BoolRef proxies.
@@ -113,7 +114,7 @@ namespace bml
      * @param b Right-hand proxy.
      * @return true iff the read boolean values differ.
      */
-    bool operator!=(const BoolRef& a, const BoolRef& b) noexcept;
+    BML_API bool operator!=(const BoolRef& a, const BoolRef& b) noexcept;
 
     /**
      * @brief Equality between a BoolRef and a bool (proxy on the left).
@@ -121,7 +122,7 @@ namespace bml
      * @param b Right-hand bool value.
      * @return true iff @p a reads the same value as @p b.
      */
-    bool operator==(const BoolRef& a, bool b) noexcept;
+    BML_API bool operator==(const BoolRef& a, bool b) noexcept;
 
     /**
      * @brief Inequality between a BoolRef and a bool (proxy on the left).
@@ -129,7 +130,7 @@ namespace bml
      * @param b Right-hand bool value.
      * @return true iff @p a and @p b differ.
      */
-    bool operator!=(const BoolRef& a, bool b) noexcept;
+    BML_API bool operator!=(const BoolRef& a, bool b) noexcept;
 
     /**
      * @brief Equality between a bool and a BoolRef (proxy on the right).
@@ -142,7 +143,7 @@ namespace bml
      * if (true == matrixBool[r][c]) { ... }
      * @endcode
      */
-    bool operator==(bool a, const BoolRef& b) noexcept;
+    BML_API bool operator==(bool a, const BoolRef& b) noexcept;
 
     /**
      * @brief Inequality between a bool and a BoolRef (proxy on the right).
@@ -150,7 +151,7 @@ namespace bml
      * @param b Right-hand BoolRef proxy.
      * @return true iff @p a and @p b differ.
      */
-    bool operator!=(bool a, const BoolRef& b) noexcept;
+    BML_API  bool operator!=(bool a, const BoolRef& b) noexcept;
 
     /**
      * @brief Stream output of the referenced boolean value.
@@ -160,7 +161,7 @@ namespace bml
      *
      * Prints `true` or `false` just like a normal bool.
      */
-    std::ostream& operator<<(std::ostream& os, BoolRef br);
+    BML_API std::ostream& operator<<(std::ostream& os, BoolRef br);
 
 } // namespace bml
 

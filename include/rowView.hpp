@@ -2,10 +2,11 @@
 #define ROWVIEW_HPP
 
 #include <cstdint>
+#include "export.hpp"
 #include "boolRef.hpp"
 
 /**
- * @file bml/rowView.hpp
+ * @file rowView.hpp
  * @brief Row-only, non-owning views over matrix storage (generic and bool-specialised).
  *
  * @note Views do not own memory; the backing storage must outlive the view.
@@ -80,7 +81,7 @@ private:
  * Elements read as @c bool, and write via @ref BoolRef which stores @c 0/@c 1 in a byte.
  * @note No bit-packing; each logical bool occupies one byte in the backing store.
  */
-template<> class RowView<bool>
+template<>class RowView<bool>
 {
 public:
     /// @brief Construct an empty row view (size()==0).

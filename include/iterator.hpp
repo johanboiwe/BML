@@ -2,7 +2,7 @@
 #define BML_ITERATOR_HPP
 
 /**
- * @file bml/iterator.hpp
+ * @file iterator.hpp
  * @brief Iterators and iterator-related helpers for BML matrices.
  *
  * This header defines:
@@ -28,10 +28,11 @@
 #include <cstdint>
 #include <tuple>
 #include <utility>
-#include "../include/matrix.hpp"
-#include "../include/rowView.hpp"
-#include "../include/boolRef.hpp"
-#include "../include/traversal.hpp"
+#include "export.hpp"
+#include "matrix.hpp"
+#include "rowView.hpp"
+#include "boolRef.hpp"
+#include "traversal.hpp"
 
 namespace bml {
 
