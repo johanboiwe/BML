@@ -94,18 +94,18 @@ namespace bml {
         /**
          * @brief Current row position within the matrix.
          *
-         * Stored as `long` for internal stepping/sentinels.
+         * Stored as `std::int64_t` for internal stepping/sentinels.
          * Exposed as `std::uint32_t` via `operator*()`.
          */
-        long row;
+        std::int64_t row;
 
         /**
          * @brief Current column position within the matrix.
          *
-         * Stored as `long` for internal stepping/sentinels.
+         * Stored as `std::int64_t` for internal stepping/sentinels.
          * Exposed as `std::uint32_t` via `operator*()`.
          */
-        long col;
+        std::int64_t col;
 
         /**
          * @brief Traversal order (row-major, column-major, etc.).
@@ -124,8 +124,8 @@ namespace bml {
          * @param traversalType Traversal order to use (default: row-major).
          */
         ConstMatrixIterator(const Matrix<T>& mat,
-                            long r,
-                            long c,
+                            std::int64_t r,
+                            std::int64_t c,
                             TraversalType traversalType = TraversalType::Row);
 
         /**
@@ -198,12 +198,12 @@ namespace bml {
         /**
          * @brief Current row position within the matrix (internal signed form).
          */
-        long row;
+        std::int64_t row;
 
         /**
          * @brief Current column position within the matrix (internal signed form).
          */
-        long col;
+        std::int64_t col;
 
         /**
          * @brief Traversal order (row-major, column-major, etc.).
