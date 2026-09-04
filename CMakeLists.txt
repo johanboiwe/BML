@@ -37,7 +37,12 @@ if(BML_BUILD_SHARED)
 else()
     add_library(BML ALIAS BML_static)
 endif()
-
+if(WIN32)
+    target_compile_definitions(BML_shared
+            PRIVATE
+            BML_BUILDING_DLL
+    )
+endif()
 
 # ---------- Tests ----------
 
