@@ -24,7 +24,7 @@ namespace bml
  * No bounds checks are performed unless stated; UB if preconditions are violated.
  */
 template<typename T>
-BML_API class RowView
+class BML_API RowView
 {
 public:
     /// @brief Construct an empty row view (size()==0, data()==nullptr).
