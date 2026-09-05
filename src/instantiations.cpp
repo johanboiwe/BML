@@ -56,10 +56,14 @@ namespace bml
 
     // -----------------------------------------------------------------------------
     // Class template instantiations (INCLUDING BOOL)
+    //
+    // BML_API is already present on the class declarations in the public headers.
+    // Do not repeat it here; GCC warns that the type attribute is being applied
+    // after the type has already been defined.
     // -----------------------------------------------------------------------------
 
     // Matrix
-#define X(T) template class BML_API Matrix<T>;
+#define X(T) template class Matrix<T>;
     BML_INTEGRAL_MATH_TYPES(X)
     BML_FLOAT_TYPES(X)
     BML_CHARLIKE_TYPES(X)
@@ -68,7 +72,7 @@ namespace bml
 #undef X
 
     // Iterator / ConstIterator
-#define X(T) template class BML_API MatrixIterator<T>; template class BML_API ConstMatrixIterator<T>;
+#define X(T) template class MatrixIterator<T>; template class ConstMatrixIterator<T>;
     BML_INTEGRAL_MATH_TYPES(X)
     BML_FLOAT_TYPES(X)
     BML_CHARLIKE_TYPES(X)
@@ -80,7 +84,7 @@ namespace bml
     // NOTE: if rowView.hpp defines explicit specialisations for bool,
     // explicitly instantiate those specialisations directly to avoid
     // -Winstantiation-after-specialization.
-#define X(T) template class BML_API RowView<T>; template class BML_API RowView<const T>;
+#define X(T) template class RowView<T>; template class RowView<const T>;
     BML_INTEGRAL_MATH_TYPES(X)
     BML_FLOAT_TYPES(X)
     BML_CHARLIKE_TYPES(X)
