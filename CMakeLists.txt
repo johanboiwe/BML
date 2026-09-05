@@ -27,7 +27,30 @@ set(BML_TARGETS
         BML_shared
 )
 
+if(MSVC)
+    # Deliberate design choices:
+    #
+    # C4804: bool relational operators (< and >) are provided for
+    #        consistency with the other matrix element types.
+    #
+    # C4805: bool uses the byte-based storage mechanism rather than
+    #        std::vector<bool>, avoiding its specialised packed representation.
+    #
+    # C4244: matrix dimensions are limited to uint32_t, while int64_t
+    #        is used internally so that -1 can represent a sentinel value.
+    #
+    target_compile_options(BML_shared PRIVATE
+            /wd4804
+            /wd4805
+            /wd4244
+    )
 
+    target_compile_options(BML_static PRIVATE
+            /wd4804
+            /wd4805
+            /wd4244
+    )
+endif()
 # ---------- Default BML target ----------
 
 option(BML_BUILD_SHARED "Build shared library" ON)
