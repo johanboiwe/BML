@@ -33,8 +33,25 @@ cmake --target install
 You will need a C++ compiler supporting C++17 (GCC, Clang and MCVC has been tested), Cmake 3.18 or greater, a buildsystem (Make and ninja has been tested).
 
 Example code:
-
+#include <iostream>
 #include <bml/bml.hpp>
 
-int main(){
+int main()
+    bml::Matrix<double> A(3, 3);
+
+    A.fill(1.0);
+
+    bml::Matrix<double> B = A * 2.0;
+    bml::Matrix<double> C = A + B;
+
+    std::cout << "A:\n" << A << '\n';
+    std::cout << "B:\n" << B << '\n';
+    std::cout << "C:\n" << C << '\n';
+
+    C *= 0.5;
+
+    std::cout << "C after *= 0.5:\n" << C << '\n';
+
+    return 0;
   
+}
