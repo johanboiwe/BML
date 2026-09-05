@@ -31,6 +31,7 @@ BML requires:
 - C++17-compatible compiler
 - CMake 3.18 or newer
 - Git
+- A 64-bit operating system
 
 BML is written in C++ and does not require a separate runtime or scripting language.
 
