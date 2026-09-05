@@ -244,6 +244,22 @@ namespace bml
     static_assert(std::is_same_v<decltype(std::declval<const Matrix<bool>&>()[0][0]), bool>);
 
     // -----------------------------------------------------------------------------
+    // Free stream operator instantiations
+    // -----------------------------------------------------------------------------
+#define BML_INSTANTIATE_STREAM(T) \
+template BML_API std::ostream& operator<< <T>( \
+std::ostream&, const Matrix<T>&);
+
+#define X(T) BML_INSTANTIATE_STREAM(T)
+    BML_INTEGRAL_MATH_TYPES(X)
+    BML_FLOAT_TYPES(X)
+    BML_CHARLIKE_TYPES(X)
+    BML_BOOL_TYPES(X)
+    BML_SPECIAL_TYPES(X)
+#undef X
+#undef BML_INSTANTIATE_STREAM
+
+    // -----------------------------------------------------------------------------
     // Cleanup
     // -----------------------------------------------------------------------------
 #undef INSTANTIATE_REDUCTIONS
