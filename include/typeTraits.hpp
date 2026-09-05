@@ -18,8 +18,9 @@
  *
  * These traits are mainly intended for use inside BML, but are documented
  * because advanced users may rely on them when extending the library.
- */
 
+ */
+/// @cond INTERNAL
 /**
  * @brief Trait that defines the underlying storage type used by BML for a given element type `U`.
  *
@@ -149,5 +150,5 @@ template <typename X>
 struct bml_is_bool : std::is_same<typename std::remove_cv<X>::type, bool>
 {
 };
-
+/// @endcond
 #endif // BML_TYPETRAITS_HPP
