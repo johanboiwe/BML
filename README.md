@@ -10,7 +10,7 @@ The library has been tested on Debian 11 and 13, FreeBSD 15, and Windows 11. Mac
 
 BML supports the following data types:
 
-* 'int8_t'
+* int8_t
 * uint8_t
 * int16_t
 * uint16_t
