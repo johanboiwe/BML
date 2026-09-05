@@ -1,0 +1,8 @@
+PROJECT_NAME           = "BML"
+PROJECT_NUMBER         = "2.0.0"
+INPUT                  = include
+RECURSIVE              = YES
+OUTPUT_DIRECTORY       = docs
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+INTERNAL_DOCS = NO
