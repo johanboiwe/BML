@@ -2,7 +2,7 @@
 #define BML_HPP
 
 /**
- * @file bml/bml.hpp
+ * @file bml.hpp
  * @brief Master include for the BML library.
  *
  * Including this header pulls in the main public interfaces of BML:
@@ -25,7 +25,7 @@
  */
 
 #include "export.hpp"          // BML_API / BML_HIDDEN visibility macros
-#include "platform.hpp"        // 64-bit platform check
+
 #include "version.hpp"         // version macros
 
 #include "traversal.hpp"       // bml::TraversalType enum (traversal order)
