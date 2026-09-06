@@ -31,7 +31,7 @@ BML requires:
 - C++17-compatible compiler
 - CMake 3.18 or newer
 - Git
-- A 64-bit operating system
+
 
 BML is written in C++ and does not require a separate runtime or scripting language.
 
@@ -95,7 +95,7 @@ Visual Studio generators are multi-configuration generators. `Debug` and `Releas
 Clone the BML repository:
 
 ```bash
-git clone <repository-url>
+git clone <https://github.com/johanboiwe/BML>
 cd BML
 ```
 
@@ -276,7 +276,7 @@ cmake --build build --config Release --parallel
 
 # Running the Tests
 
-BML contains functional and stress tests covering the supported matrix types and operations.
+BML contains functional and stress tests covering the supported matrix types and operations. The tests demands around 1 gb of free ram. 
 
 The test programs are:
 
