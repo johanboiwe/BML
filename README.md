@@ -11,7 +11,6 @@ The library has been tested on true metal Debian 13 x86-64. In virtual machines 
 * Debian 13 arm64
 * Debian 13 ppc64
 * Debian 13 risc-v64
-* 
 
 ## Supported data types
 
