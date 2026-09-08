@@ -3,11 +3,13 @@ name: Build and deploy Doxygen
 on:
   push:
     branches: ["master"]
+    tags:
+      - "v*"
 
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -39,10 +41,32 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Download existing Pages artifact
+        uses: actions/download-artifact@v5
+        continue-on-error: true
+        with:
+          name: github-pages
+          path: site
+
+      - name: Prepare documentation
+        run: |
+          mkdir -p site
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            rm -rf "site/${VERSION}"
+            mkdir -p "site/${VERSION}"
+            cp -r docs/html/. "site/${VERSION}/"
+          else
+            rm -rf site/latest
+            mkdir -p site/latest
+            cp -r docs/html/. site/latest/
+          fi
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'docs/html'
+          path: site
 
       - name: Deploy to GitHub Pages
         id: deployment
