@@ -28,9 +28,9 @@
 namespace bml
 {
     template <class T>
-    class MatrixIterator;
+    class BML_API MatrixIterator;
     template <class T>
-    class ConstMatrixIterator;
+    class BML_API ConstMatrixIterator;
 
 
     /**
