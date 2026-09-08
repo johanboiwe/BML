@@ -11,6 +11,20 @@
 #include <type_traits>
 #include <vector>
 
+/**
+ * @file matrix.hpp
+ * @brief Defines the bml::Matrix class.
+ *
+ * Provides a two-dimensional matrix container with contiguous storage.
+ *
+ * The Matrix class stores its elements internally in a flat array while
+ * providing a two-dimensional interface for accessing and manipulating
+ * the data.
+
+ * @tparam T The type of elements stored in the matrix.
+ */
+
+
 namespace bml
 {
     template <class T>
@@ -22,7 +36,7 @@ namespace bml
     /**
      * @brief Matrix class. Internally stores values flat, but present them as 2d.
     * @tparam T can be bool, {u,}int{8,16,32,64}_t, "
-            "float/double/long double, char, std::string)"
+            "float/double/long double, char, std::string"
      */
     template <typename T>
     class BML_API Matrix
