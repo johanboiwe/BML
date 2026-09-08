@@ -1,66 +1,64 @@
 name: Build and deploy Doxygen
 
 on:
-push:
-branches: ["master"]
-tags:
-  - "v*"
-
-workflow_dispatch:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 permissions:
-contents: write
+  contents: write
 
 concurrency:
-group: "pages"
-cancel-in-progress: false
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-deploy:
-runs-on: ubuntu-latest
-  
-  ```
-steps:
-  - name: Checkout
-    uses: actions/checkout@v5
+  deploy:
+    runs-on: ubuntu-latest
 
-  - name: Install Doxygen and Graphviz
-    run: sudo apt-get update && sudo apt-get install -y cmake doxygen graphviz
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-  - name: Configure CMake
-    run: cmake -S . -B build
+      - name: Install Doxygen and Graphviz
+        run: sudo apt-get update && sudo apt-get install -y cmake doxygen graphviz
 
-  - name: Generate documentation
-    run: doxygen build/Doxyfile
+      - name: Configure CMake
+        run: cmake -S . -B build
 
-  - name: Prepare version
-    id: version
-    shell: bash
-    run: |
-      if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-        VERSION="${GITHUB_REF_NAME#v}"
-        echo "is_release=true" >> "$GITHUB_OUTPUT"
-        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-      else
-        echo "is_release=false" >> "$GITHUB_OUTPUT"
-      fi
+      - name: Generate documentation
+        run: doxygen build/Doxyfile
 
-  - name: Deploy current documentation
-    if: steps.version.outputs.is_release != 'true'
-    uses: peaceiris/actions-gh-pages@v4
-    with:
-      github_token: ${{ secrets.GITHUB_TOKEN }}
-      publish_branch: gh-pages
-      publish_dir: ./docs/html
-      keep_files: true
+      - name: Prepare version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
 
-  - name: Deploy versioned documentation
-    if: steps.version.outputs.is_release == 'true'
-    uses: peaceiris/actions-gh-pages@v4
-    with:
-      github_token: ${{ secrets.GITHUB_TOKEN }}
-      publish_branch: gh-pages
-      publish_dir: ./docs/html
-      destination_dir: ${{ steps.version.outputs.version }}
-      keep_files: true
-  ```
+      - name: Deploy current documentation
+        if: steps.version.outputs.is_release != 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./docs/html
+          keep_files: true
+
+      - name: Deploy versioned documentation
+        if: steps.version.outputs.is_release == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./docs/html
+          destination_dir: ${{ steps.version.outputs.version }}
+          keep_files: true
