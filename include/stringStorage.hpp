@@ -8,6 +8,14 @@
 #include <string>
 #include <vector>
 #include "export.hpp"
+/**
+ * @file StringStorage.hpp
+ * @brief Defines the bml::StringStorage class.
+ *
+ * Provides a Pascal string-inspired string storage format in which the
+ * string length is stored as a 16-bit unsigned integer followed by the
+ * string data.
+ */
 namespace bml
 {
 
