@@ -1,8 +1,7 @@
-```text
 PROJECT_NAME           = "BML"
 PROJECT_NUMBER         = "@PROJECT_VERSION@"
 
-INPUT                  = include README.md INSTALL.md LICENSE
+INPUT                  = include README.md INSTALL.md LICENSE.md
 RECURSIVE              = YES
 
 OUTPUT_DIRECTORY       = docs
@@ -12,4 +11,4 @@ GENERATE_LATEX         = NO
 USE_MDFILE_AS_MAINPAGE = README.md
 
 INTERNAL_DOCS          = NO
-```
+

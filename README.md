@@ -112,4 +112,4 @@ BML is under active development. The API may change between versions.
 
 ## Licence
 
-See [LICENSE](LICENSE).
+See [LICENSE](LICENSE.md).
