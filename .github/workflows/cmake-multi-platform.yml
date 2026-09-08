@@ -45,3 +45,6 @@ jobs:
       - name: Test
         working-directory: build
         run: ctest --build-config Release --output-on-failure
+
+      - name: Install
+        run: cmake --install build --prefix install --config Release
