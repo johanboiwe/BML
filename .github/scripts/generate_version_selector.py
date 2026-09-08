@@ -50,7 +50,7 @@ from pathlib import Path
 
 REPOSITORY_PATH = "/BML/"
 DOCS_DIRECTORY = Path("docs/html")
-JAVASCRIPT_TEMPLATE = Path("version-selector.js")
+JAVASCRIPT_TEMPLATE = Path(__file__).parent / "version-selector.js"
 
 
 # ---------------------------------------------------------------------------
