@@ -7,7 +7,7 @@
 
 /**
  * @file rowView.hpp
- * @brief Row-only, non-owning views over matrix storage (generic and bool-specialised).
+ * @brief Row-only, non-owning views over matrix storage (generic and bool-specialised). bml::RowView
  *
  * @note Views do not own memory; the backing storage must outlive the view.
  * @see bml::BoolRef for byte-backed bool element proxies.

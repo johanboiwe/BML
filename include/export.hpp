@@ -2,7 +2,7 @@
 #define BML_EXPORT_HPP
 
 /**
- * @file bml/export.hpp
+ * @file export.hpp
  * @brief Symbol visibility / import-export control for BML.
  *
  * This header defines two macros used to control which symbols are visible

@@ -7,7 +7,7 @@
 
 /**
  * @file boolRef.hpp
- * @brief Non-owning proxy for a single boolean cell in a Matrix<bool>.
+ * @brief Non-owning proxy for a single boolean cell in a Matrix<bool>. bml::BoolRef
  *
  * BML stores Matrix<bool> as bytes (uint8_t) instead of C++ bool, to avoid
  * bit-packing and other surprises. BoolRef acts like a reference to one of
