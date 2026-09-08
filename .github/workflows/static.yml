@@ -27,11 +27,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Doxygen
-        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+      - name: Install Doxygen and Graphviz
+        run: sudo apt-get update && sudo apt-get install -y cmake doxygen graphviz
+
+      - name: Configure CMake
+        run: cmake -S . -B build
 
       - name: Generate documentation
-        run: doxygen Doxyfile
+        run: doxygen build/Doxyfile
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -188,3 +188,8 @@ install(
         DIRECTORY include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/BML
 )
+configure_file(
+        Doxyfile
+        ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+        @ONLY
+)
