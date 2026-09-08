@@ -10,8 +10,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
@@ -19,10 +17,6 @@ concurrency:
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -38,36 +32,33 @@ jobs:
       - name: Generate documentation
         run: doxygen build/Doxyfile
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Download existing Pages artifact
-        uses: actions/download-artifact@v5
-        continue-on-error: true
-        with:
-          name: github-pages
-          path: site
-
-      - name: Prepare documentation
+      - name: Prepare version
+        id: version
+        shell: bash
         run: |
-          mkdir -p site
-
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-            rm -rf "site/${VERSION}"
-            mkdir -p "site/${VERSION}"
-            cp -r docs/html/. "site/${VERSION}/"
+            VERSION="${GITHUB_REF_NAME#v}"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           else
-            rm -rf site/latest
-            mkdir -p site/latest
-            cp -r docs/html/. site/latest/
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy current documentation
+        if: steps.version.outputs.is_release != 'true'
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: site
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./docs/html
+          keep_files: true
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Deploy versioned documentation
+        if: steps.version.outputs.is_release == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./docs/html
+          destination_dir: ${{ steps.version.outputs.version }}
+          keep_files: true
