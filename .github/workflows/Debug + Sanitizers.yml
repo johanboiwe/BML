@@ -2,6 +2,8 @@
 name: Debug + Sanitizers
 
 on:
+
+  workflow_dispatch:
   push:
     branches: ["master"]
     paths:
@@ -11,14 +13,6 @@ on:
       - "CMakeLists.txt"
       - "cmake/**"
 
-  pull_request:
-    branches: ["master"]
-    paths:
-      - "src/**"
-      - "include/**"
-      - "tests/**"
-      - "CMakeLists.txt"
-      - "cmake/**"
 
 jobs:
   sanitizer:
