@@ -1,5 +1,5 @@
 /**
-* @file bml/version.hpp
+* @file version.hpp
  * @brief Compile-time version information for the BML library.
  *
  * These macros let you detect which version of BML you are compiling against.

@@ -9,7 +9,7 @@
 #include <vector>
 #include "export.hpp"
 /**
- * @file StringStorage.hpp
+ * @file stringStorage.hpp
  * @brief Defines the bml::StringStorage class.
  *
  * Provides a Pascal string-inspired string storage format in which the
