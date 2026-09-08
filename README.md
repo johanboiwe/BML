@@ -4,7 +4,14 @@ This is BML. It stands for **Boiwe Matrix Library**. It is a 2D matrix library t
 
 Some of the functionality and documentation have been created with AI assistance, but everything has been checked by a true, living *Homo sapiens sapiens* (a hairless ape that lost his tail).
 
-The library has been tested on Debian 11 and 13, FreeBSD 15, and Windows 11. MacOS has not been tested.
+The library has been tested on true metal Debian 13 x86-64. In virtual machines it has been tested on,
+* Windows 11
+* Debian 12 i686
+* Tiny Core Linux i486
+* Debian 13 arm64
+* Debian 13 ppc64
+* Debian 13 risc-v64
+* 
 
 ## Supported data types
 
