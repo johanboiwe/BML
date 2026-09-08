@@ -2,7 +2,12 @@
 #define BML_TRAVERSAL_HPP
 
 #include <cstdint>
-
+/**
+ * @file Traversal.hpp
+ * @brief Defines the bml::TraversalType enumeration.
+ *
+ * Provides traversal modes used when iterating over matrix elements.
+ */
 namespace bml {
 
     /**
