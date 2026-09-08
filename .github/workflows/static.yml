@@ -63,4 +63,3 @@ steps:
       publish_dir: ./docs/html
       destination_dir: ${{ steps.version.outputs.version }}
       keep_files: true
-  ```
