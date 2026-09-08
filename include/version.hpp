@@ -1,5 +1,5 @@
 /**
-* @file version.hpp
+ * @file version.hpp
  * @brief Compile-time version information for the BML library.
  *
  * These macros let you detect which version of BML you are compiling against.
@@ -7,7 +7,7 @@
  *
  * Typical use:
  * @code
- * #include "BMLVersion.hpp"
+ * #include <bml/version.hpp>
  *
  * #if (BML_VERSION_MAJOR > 2) || \
  *     (BML_VERSION_MAJOR == 2 && BML_VERSION_MINOR >= 1)
@@ -25,7 +25,7 @@
  *
  * Increased when there are breaking API changes.
  */
-#define BML_VERSION_MAJOR 2
+#define BML_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
 
 /**
  * @def BML_VERSION_MINOR
@@ -33,7 +33,7 @@
  *
  * Increased when new features are added in a backwards-compatible way.
  */
-#define BML_VERSION_MINOR 0
+#define BML_VERSION_MINOR @PROJECT_VERSION_MINOR@
 
 /**
  * @def BML_VERSION_PATCH
@@ -41,6 +41,7 @@
  *
  * Increased for bug fixes and other backwards-compatible changes.
  */
-#define BML_VERSION_PATCH 0
+#define BML_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
 #endif // BML_VERSION_HPP
+
