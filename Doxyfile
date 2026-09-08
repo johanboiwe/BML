@@ -1,7 +1,7 @@
 PROJECT_NAME           = "BML"
 PROJECT_NUMBER         = "2.0.0"
 
-INPUT                  = include README.md INSTALL.md LICENSE.md
+INPUT                  = include README.md INSTALL.md LICENSE
 RECURSIVE              = YES
 
 OUTPUT_DIRECTORY       = docs
