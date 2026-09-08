@@ -1,64 +1,229 @@
 name: Build and deploy Doxygen
 
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - "v*"
-  workflow_dispatch:
+push:
+branches:
+- master
+tags:
+- "v*"
+workflow_dispatch:
 
 permissions:
-  contents: write
+contents: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+group: pages
+cancel-in-progress: false
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+deploy:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+```
+steps:
+  - name: Checkout
+    uses: actions/checkout@v5
+    with:
+      fetch-depth: 0
 
-      - name: Install Doxygen and Graphviz
-        run: sudo apt-get update && sudo apt-get install -y cmake doxygen graphviz
+  - name: Install Doxygen and Graphviz
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y cmake doxygen graphviz
 
-      - name: Configure CMake
-        run: cmake -S . -B build
+  - name: Configure CMake
+    run: cmake -S . -B build
 
-      - name: Generate documentation
-        run: doxygen build/Doxyfile
+  - name: Generate documentation
+    run: doxygen build/Doxyfile
 
-      - name: Prepare version
-        id: version
-        shell: bash
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-            echo "is_release=true" >> "$GITHUB_OUTPUT"
-            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_release=false" >> "$GITHUB_OUTPUT"
-          fi
+  - name: Prepare version
+    id: version
+    shell: bash
+    run: |
+      if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+        VERSION="${GITHUB_REF_NAME#v}"
 
-      - name: Deploy current documentation
-        if: steps.version.outputs.is_release != 'true'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./docs/html
-          keep_files: true
+        echo "is_release=true" >> "$GITHUB_OUTPUT"
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy versioned documentation
-        if: steps.version.outputs.is_release == 'true'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./docs/html
-          destination_dir: ${{ steps.version.outputs.version }}
-          keep_files: true
+        echo "Building release documentation for ${VERSION}"
+      else
+        echo "is_release=false" >> "$GITHUB_OUTPUT"
+        echo "version=master" >> "$GITHUB_OUTPUT"
+
+        echo "Building current master documentation"
+      fi
+
+  - name: Generate version selector
+    shell: bash
+    run: |
+      mkdir -p docs/html
+
+      TAGS=$(git tag --list 'v*' --sort=-version:refname)
+
+      python3 - <<'PY'
+      import os
+      import subprocess
+      from pathlib import Path
+
+      docs = Path("docs/html")
+
+      tags = subprocess.check_output(
+          ["git", "tag", "--list", "v*", "--sort=-version:refname"],
+          text=True
+      ).splitlines()
+
+      versions = []
+
+      for tag in tags:
+          if tag.startswith("v"):
+              versions.append(tag[1:])
+
+      current_ref = os.environ.get("GITHUB_REF", "")
+
+      if current_ref.startswith("refs/tags/v"):
+          current_version = current_ref.removeprefix("refs/tags/v")
+      else:
+          current_version = "master"
+
+      entries = [
+          {
+              "name": "master",
+              "path": "/BML/"
+          }
+      ]
+
+      for version in versions:
+          entries.append({
+              "name": version,
+              "path": f"/BML/{version}/"
+          })
+
+      options = []
+
+      for entry in entries:
+          selected = (
+              " selected"
+              if entry["name"] == current_version
+              else ""
+          )
+
+          options.append(
+              f'<option value="{entry["path"]}"{selected}>'
+              f'{entry["name"]}</option>'
+          )
+
+      selector = "\n".join(options)
+
+      javascript = f"""\
+      (function () {{
+          "use strict";
+
+          const currentVersion = "{current_version}";
+
+          const wrapper = document.createElement("div");
+          wrapper.id = "bml-version-selector";
+
+          wrapper.style.position = "fixed";
+          wrapper.style.top = "10px";
+          wrapper.style.right = "10px";
+          wrapper.style.zIndex = "9999";
+          wrapper.style.padding = "6px 8px";
+          wrapper.style.background = "white";
+          wrapper.style.border = "1px solid #888";
+          wrapper.style.borderRadius = "4px";
+          wrapper.style.boxShadow = "0 1px 4px rgba(0,0,0,0.2)";
+
+          const label = document.createElement("label");
+          label.htmlFor = "bml-version-select";
+          label.textContent = "Version: ";
+
+          const select = document.createElement("select");
+          select.id = "bml-version-select";
+
+          select.innerHTML = `{selector}`;
+
+          select.addEventListener("change", function () {{
+              window.location.href = this.value;
+          }});
+
+          wrapper.appendChild(label);
+          wrapper.appendChild(select);
+
+          function addSelector() {{
+              if (!document.body) {{
+                  return;
+              }}
+
+              if (
+                  document.getElementById(
+                      "bml-version-selector"
+                  )
+              ) {{
+                  return;
+              }}
+
+              document.body.appendChild(wrapper);
+          }}
+
+          if (document.readyState === "loading") {{
+              document.addEventListener(
+                  "DOMContentLoaded",
+                  addSelector
+              );
+          }} else {{
+              addSelector();
+          }}
+      }})();
+      """
+
+      selector_file = docs / "version-selector.js"
+      selector_file.write_text(
+          javascript,
+          encoding="utf-8"
+      )
+
+      for html_file in docs.rglob("*.html"):
+          text = html_file.read_text(encoding="utf-8")
+
+          if "version-selector.js" in text:
+              continue
+
+          script = (
+              '<script src="/BML/version-selector.js"></script>'
+          )
+
+          if "</body>" in text:
+              text = text.replace(
+                  "</body>",
+                  script + "\n</body>",
+                  1
+              )
+          else:
+              text += "\n" + script + "\n"
+
+          html_file.write_text(
+              text,
+              encoding="utf-8"
+          )
+      PY
+
+  - name: Deploy current documentation
+    if: steps.version.outputs.is_release != 'true'
+    uses: peaceiris/actions-gh-pages@v4
+    with:
+      github_token: ${{ secrets.GITHUB_TOKEN }}
+      publish_branch: gh-pages
+      publish_dir: ./docs/html
+      keep_files: true
+
+  - name: Deploy versioned documentation
+    if: steps.version.outputs.is_release == 'true'
+    uses: peaceiris/actions-gh-pages@v4
+    with:
+      github_token: ${{ secrets.GITHUB_TOKEN }}
+      publish_branch: gh-pages
+      publish_dir: ./docs/html
+      destination_dir: ${{ steps.version.outputs.version }}
+      keep_files: true
