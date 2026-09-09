@@ -234,7 +234,28 @@ def install_version_selector():
     selector_js = SITE_DIRECTORY / "version-selector.js"
     selector_css = SITE_DIRECTORY / "version-selector.css"
 
+    if not selector_js.exists():
+        raise RuntimeError(
+            f"Version selector JavaScript was not generated: "
+            f"{selector_js}"
+        )
+
+    if not selector_css.exists():
+        raise RuntimeError(
+            f"Version selector CSS was not generated: "
+            f"{selector_css}"
+        )
+
     html_files = list(SITE_DIRECTORY.rglob("*.html"))
+
+    if not html_files:
+        raise RuntimeError(
+            "No HTML files were found in the generated site."
+        )
+
+    print()
+    print("Installing version selector")
+    print("==========================")
 
     for html_file in html_files:
         html_directory = html_file.parent
@@ -257,32 +278,65 @@ def install_version_selector():
             encoding="utf-8"
         )
 
+        original_html = html
+
         if 'href="version-selector.css"' not in html:
+            if "</head>" not in html:
+                raise RuntimeError(
+                    f"Could not find </head> in {html_file}"
+                )
+
             html = html.replace(
                 "</head>",
-                '    <link href="version-selector.css" rel="stylesheet" type="text/css" />\n'
+                '    <link href="version-selector.css" '
+                'rel="stylesheet" type="text/css" />\n'
                 "</head>",
                 1,
             )
 
         if 'src="version-selector.js"' not in html:
+            if "</body>" not in html:
+                raise RuntimeError(
+                    f"Could not find </body> in {html_file}"
+                )
+
             html = html.replace(
                 "</body>",
-                '    <script type="text/javascript" src="version-selector.js"></script>\n'
+                '    <script type="text/javascript" '
+                'src="version-selector.js"></script>\n'
                 "</body>",
                 1,
             )
 
-        html_file.write_text(
-            html,
-            encoding="utf-8",
+        if html == original_html:
+            print(f"Selector already installed: {html_file}")
+        else:
+            html_file.write_text(
+                html,
+                encoding="utf-8",
+            )
+
+            print(f"Selector installed: {html_file}")
+
+        check_html = html_file.read_text(
+            encoding="utf-8"
         )
 
+        if 'href="version-selector.css"' not in check_html:
+            raise RuntimeError(
+                f"CSS reference was not installed in {html_file}"
+            )
+
+        if 'src="version-selector.js"' not in check_html:
+            raise RuntimeError(
+                f"JavaScript reference was not installed in {html_file}"
+            )
+
+    print()
     print(
-        f"Installed version selector into {len(html_files)} HTML files."
+        f"Installed version selector into "
+        f"{len(html_files)} HTML files."
     )
-
-
 def build_master_documentation():
     """
     Build documentation from the current repository checkout.
