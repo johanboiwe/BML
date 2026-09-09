@@ -35,7 +35,12 @@ VERSION_SELECTOR_TEMPLATE = (
         / "webb"
         / "version-selector.js"
 )
-
+VERSION_SELECTOR_CSS = (
+        REPOSITORY_ROOT
+        / ".github"
+        / "webb"
+        / "version-selector.css"
+)
 PAGES_BASE_PATH = "/BML/"
 
 
