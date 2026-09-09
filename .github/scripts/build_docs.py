@@ -177,7 +177,7 @@ def create_version_options(release_tags):
 
 def generate_version_selector(release_tags):
     """
-    Generate version-selector.js from the JavaScript template.
+    Generate the version selector JavaScript and CSS.
     """
 
     template = VERSION_SELECTOR_TEMPLATE.read_text(
@@ -200,11 +200,18 @@ def generate_version_selector(release_tags):
 
     selector_path.write_text(
         generated,
-        encoding="utf-8",
+        encoding="utf-8"
+    )
+
+    css_path = SITE_DIRECTORY / "version-selector.css"
+
+    shutil.copy2(
+        VERSION_SELECTOR_CSS,
+        css_path,
     )
 
     print("Generated:", selector_path)
-
+    print("Copied:", css_path)
 
 def add_version_selector_to_site():
     """
