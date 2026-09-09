@@ -1,925 +1,1019 @@
-# BML Installation Guide
+# Building and Installing BML
 
-BML is a C++17 matrix library built with CMake. It builds both static and shared libraries and has been tested with GCC, Clang and MSVC.
+BML is a C++17 matrix library built with CMake. The project builds both static and shared versions of the library, together with separate test programs for each version.
 
-## Contents
+BML supports the four standard CMake build configurations:
 
-- [Requirements](#requirements)
-- [Getting the Source](#getting-the-source)
-- [Configuring BML](#configuring-bml)
-- [Build Options](#build-options)
-- [Building BML](#building-bml)
-- [Running the Tests](#running-the-tests)
-- [Shared and Static Libraries](#shared-and-static-libraries)
-- [LTO / IPO](#lto--ipo)
-- [Installing BML](#installing-bml)
-- [Using an Installed BML](#using-an-installed-bml)
-- [Windows DLL Usage](#windows-dll-usage)
-- [Custom Installation Prefix](#custom-installation-prefix)
-- [Cleaning the Build](#cleaning-the-build)
-- [Recommended Release Builds](#recommended-release-builds)
-- [Troubleshooting](#troubleshooting)
+- **Debug** — debugging enabled with minimal optimisation.
+- **Release** — optimised production build. This is BML's default.
+- **RelWithDebInfo** — optimised build with debugging information.
+- **MinSizeRel** — optimised primarily for reducing binary size.
 
----
+The way the build configuration is selected depends on the CMake generator. Single-configuration generators such as Ninja use `CMAKE_BUILD_TYPE`, while multi-configuration generators such as Visual Studio and Xcode select the configuration when the project is built.
 
-# Requirements
+## Requirements
 
-## General
+The project requires:
 
-BML requires:
-
-- C++17-compatible compiler
 - CMake 3.18 or newer
-- Git
+- A C++17-compatible compiler
+- Ninja, Make, or another supported CMake build tool
 
+The C++ standard is configured by CMake:
 
-BML is written in C++ and does not require a separate runtime or scripting language.
+- C++17 is required.
+- Compiler-specific C++ extensions are disabled.
 
-The following compilers have been tested:
+```cmake
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+```
 
-- GCC
-- Clang
-- Microsoft Visual C++ (MSVC)
+## Build type
 
-The following build systems have been tested:
+If no build type is specified, BML defaults to **Release**:
 
-- Ninja
-- Make
-- Visual Studio
+```cmake
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+```
 
----
+Therefore, a normal single-configuration CMake build produces a Release build unless another build type is explicitly selected.
 
-## Linux
-
-On Debian or Ubuntu, a basic build environment can be installed with:
+For example, to explicitly configure a Debug build:
 
 ```bash
-sudo apt update
-sudo apt install build-essential cmake ninja-build git
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
 ```
 
-Both GCC and Clang can be used.
-
-To explicitly configure a build using Clang:
+For Release:
 
 ```bash
-cmake -S . -B build \
-    -G Ninja \
-    -DCMAKE_CXX_COMPILER=clang++
+cmake -S . -B build -G Ninja
 ```
 
----
+The explicit Release option is optional because Release is already the default.
 
-## Windows
-
-A Microsoft Visual Studio installation with C++ development support is required.
-
-The Visual Studio installation should include:
-
-- MSVC
-- Windows SDK
-- C++ build tools
-
-CMake can automatically select an installed Visual Studio generator:
-
-```powershell
-cmake -S . -B build
-```
-
-Visual Studio generators are multi-configuration generators. `Debug` and `Release` are therefore selected when building rather than when configuring.
-
----
-
-# Getting the Source
-
-Clone the BML repository:
+The other standard configurations can be selected in the same way:
 
 ```bash
-git clone <https://github.com/johanboiwe/BML>
-cd BML
+cmake -S . -B build-relwithdebinfo -G Ninja \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
-
-Alternatively, download or extract a source release and enter the BML directory.
-
----
-
-# Configuring BML
-
-BML uses an out-of-source build. Generated files are placed in the `build` directory rather than in the source tree.
-
-## Linux — Ninja
-
-Configure a Release build:
 
 ```bash
-cmake -S . -B build \
-    -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build-minsizerel -G Ninja \
+    -DCMAKE_BUILD_TYPE=MinSizeRel
 ```
 
-Configure a Debug build:
+## Building with Ninja
+
+Configure the project:
 
 ```bash
-cmake -S . -B build \
-    -G Ninja \
-    -DCMAKE_BUILD_TYPE=Debug
+cmake -S . -B build -G Ninja
 ```
 
-## Windows — Visual Studio
-
-Configure with:
-
-```powershell
-cmake -S . -B build
-```
-
-CMake will select the installed Visual Studio generator.
-
-A multi-configuration build will contain configurations such as:
-
-```text
-build/
-├── Debug/
-└── Release/
-```
-
----
-
-# Build Options
-
-BML provides several CMake options.
-
-## BML_BUILD_SHARED
-
-This option controls which library the `BML` CMake alias refers to.
-
-Default:
-
-```text
-BML_BUILD_SHARED=ON
-```
-
-With the default setting:
-
-```text
-BML → BML_shared
-```
-
-To select the static library for the `BML` alias:
-
-```bash
-cmake -S . -B build \
-    -DBML_BUILD_SHARED=OFF
-```
-
-This does **not** disable either library target. Both `BML_shared` and `BML_static` are created by the current build system.
-
-The underlying targets can therefore be used independently:
-
-```text
-BML_shared
-BML_static
-```
-
----
-
-## BML_RUN_TESTS
-
-Controls whether the tests are run automatically as part of the normal build.
-
-Default:
-
-```text
-BML_RUN_TESTS=ON
-```
-
-To enable automatic testing:
-
-```bash
-cmake -S . -B build \
-    -DBML_RUN_TESTS=ON
-```
-
-To disable it:
-
-```bash
-cmake -S . -B build \
-    -DBML_RUN_TESTS=OFF
-```
-
-When enabled, both the shared-library and static-library test programs are built and executed during the normal build.
-
----
-
-## BML_ENABLE_LTO
-
-> **Note:** This option is planned for the configurable build system. The current CMake configuration automatically enables IPO/LTO whenever the selected compiler supports it.
-
-BML uses CMake's `CheckIPOSupported` module to determine whether interprocedural optimisation is supported.
-
-When supported, LTO/IPO is enabled for:
-
-- `BML_shared`
-- `BML_static`
-- `testMatrix_shared`
-- `testMatrix_static`
-
-The CMake configuration reports:
-
-```text
--- Building with LTO
-```
-
-when LTO is available.
-
----
-
-# Building BML
-
-## Linux
-
-After configuring:
-
-```bash
-cmake --build build
-```
-
-For a parallel build:
+Build it:
 
 ```bash
 cmake --build build --parallel
 ```
 
-If automatic tests are enabled, the tests will also be executed as part of the build.
+Because BML defaults to Release, the first command is sufficient for a normal Release build.
 
-## Windows
+For other configurations, specify `CMAKE_BUILD_TYPE` during configuration.
 
-Build Debug:
+## MacOS
 
-```powershell
-cmake --build build --config Debug
-```
+MacOS uses Apple's development tools and has a somewhat different setup from Linux distributions. Homebrew is useful for installing CMake and Ninja, while the normal MacOS compiler is Apple Clang.
 
-Build Release:
+### Install Apple's Command Line Tools
 
-```powershell
-cmake --build build --config Release
-```
-
-For a parallel Release build:
-
-```powershell
-cmake --build build --config Release --parallel
-```
-
----
-
-# Running the Tests
-
-BML contains functional and stress tests covering the supported matrix types and operations. The tests demands around 1 gb of free ram. 
-
-The test programs are:
-
-```text
-testMatrix_shared
-testMatrix_static
-```
-
-When `BML_RUN_TESTS=ON`, they are executed automatically during the normal build.
-
-They can also be run manually.
-
-## Linux
+Install the Xcode Command Line Tools if they are not already installed:
 
 ```bash
-./build/testMatrix_shared
-./build/testMatrix_static
+xcode-select --install
 ```
 
-## Windows
+This provides the Apple compiler and SDK required for building C++ software.
 
-Release:
+Check that Clang is available:
 
-```powershell
-.\build\Release\testMatrix_shared.exe
-.\build\Release\testMatrix_static.exe
+```bash
+clang++ --version
 ```
 
-Debug:
+On a normal MacOS installation, `clang++` is Apple's Clang.
 
-```powershell
-.\build\Debug\testMatrix_shared.exe
-.\build\Debug\testMatrix_static.exe
+### Install Homebrew
+
+If Homebrew is not already installed, install it using the official Homebrew installation instructions. After installation, make sure Homebrew's environment is loaded into the shell configuration.
+
+Check that it works:
+
+```bash
+brew --version
 ```
 
-Both tests should complete successfully.
+### Install CMake and Ninja
 
----
+The easiest way to install the CMake build tools is through Homebrew:
 
-# Shared and Static Libraries
+```bash
+brew install cmake ninja
+```
 
-BML builds both a shared and a static library.
+Verify the installations:
 
-The actual CMake targets are:
+```bash
+cmake --version
+ninja --version
+```
+
+### Build BML with Apple Clang
+
+The recommended MacOS build is to let CMake use the system Apple Clang and use Ninja as the build system:
+
+```bash
+cmake -S . -B build -G Ninja
+```
+
+Then build:
+
+```bash
+cmake --build build --parallel
+```
+
+Run the tests:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+This produces the normal MacOS shared-library form:
 
 ```text
-BML_shared
-BML_static
+libBML.dylib
 ```
 
-The `BML` target is an alias which selects one of these according to `BML_BUILD_SHARED`.
-
-## Linux
-
-The shared library is:
-
-```text
-libBML.so
-```
-
-The static library is:
+and the static library:
 
 ```text
 libBML.a
 ```
 
-## Windows
+### Check which compiler CMake selected
 
-The shared library consists of:
-
-```text
-BML.dll
-BML.lib
-```
-
-`BML.dll` contains the actual shared-library implementation.
-
-`BML.lib` is the MSVC import library used when linking an application against the DLL.
-
-The static library is:
-
-```text
-BML_static.lib
-```
-
-When statically linking, the BML implementation is included directly in the application executable.
-
----
-
-# LTO / IPO
-
-BML uses CMake's interprocedural optimisation mechanism when supported by the selected compiler.
-
-IPO is commonly known as link-time optimisation (LTO).
-
-The implementation uses:
-
-```cmake
-include(CheckIPOSupported)
-
-check_ipo_supported(...)
-```
-
-to determine whether the compiler supports the required optimisation.
-
-Different compilers implement this differently:
-
-- GCC uses GCC LTO.
-- Clang uses LLVM LTO.
-- MSVC uses link-time code generation (LTCG).
-
-LTO can make intermediate object files and static libraries considerably larger.
-
-The size of a static library is therefore not necessarily representative of the size of the final executable.
-
-The final optimisation takes place when the executable or shared library is linked.
-
----
-
-# Installing BML
-
-BML uses CMake's standard installation mechanism together with `GNUInstallDirs`.
-
-After building BML, install it with:
+CMake records the compiler in the build directory. You can inspect it with:
 
 ```bash
-sudo cmake --install build
+grep CMAKE_CXX_COMPILER build/CMakeCache.txt
 ```
 
-The default installation prefix is normally:
+For a normal Apple Clang build, it will point to the MacOS Clang installation.
 
-```text
-/usr/local
-```
-
-On a typical Linux installation, the result is approximately:
-
-```text
-/usr/local/
-├── include/
-│   └── BML/
-└── lib/
-    ├── libBML.so
-    └── libBML.a
-```
-
-The exact library directory is determined by CMake.
-
-Both the shared and static libraries are installed.
-
-The public headers below:
-
-```text
-include/
-```
-
-are installed below:
-
-```text
-/usr/local/include/BML/
-```
-
-You can see what CMake intends to install without actually installing anything:
+You can also configure explicitly with Apple Clang:
 
 ```bash
-cmake --install build --dry-run
+cmake -S . -B build -G Ninja \
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_CXX_COMPILER=clang++
 ```
 
----
+Normally this is unnecessary; CMake will find the compiler automatically.
 
-# Using an Installed BML
+### Homebrew LLVM
 
-After installation, BML headers can be included from a C++ program:
-
-```cpp
-#include <BML/Matrix.hpp>
-```
-
-For example:
-
-```cpp
-#include <iostream>
-#include <BML/Matrix.hpp>
-
-int main()
-{
-    bml::Matrix<double> A(3, 3);
-
-    A.fill(1.0);
-
-    bml::Matrix<double> B = A * 2.0;
-    bml::Matrix<double> C = A + B;
-
-    std::cout << C << '\n';
-
-    return 0;
-}
-```
-
-A simple Linux compilation using the default installation prefix is:
+Homebrew also provides a separate LLVM/Clang toolchain:
 
 ```bash
-g++ -std=c++17 main.cpp \
-    -I/usr/local/include \
-    -L/usr/local/lib \
-    -lBML \
-    -o myprogram
+brew install llvm
 ```
 
-For a non-standard installation prefix, replace the include and library paths accordingly.
+However, Homebrew's LLVM is **keg-only**, because MacOS already provides its own LLVM-based compiler toolchain. Homebrew therefore does not simply replace `/usr/bin/clang++` with its version.
 
----
-
-# Static Linking
-
-To link against the static library on Linux:
+If you specifically want to build BML using Homebrew LLVM, obtain its installation prefix:
 
 ```bash
-g++ -std=c++17 main.cpp \
-    -I/usr/local/include \
-    -L/usr/local/lib \
-    -lBML \
-    -o myprogram
+brew --prefix llvm
 ```
 
-If both `libBML.so` and `libBML.a` are available, the linker normally prefers the shared library.
-
-To explicitly select the static library:
+Then configure CMake explicitly. For example:
 
 ```bash
-g++ -std=c++17 main.cpp \
-    -I/usr/local/include \
-    /usr/local/lib/libBML.a \
-    -o myprogram
+LLVM_PREFIX="$(brew --prefix llvm)"
+
+cmake -S . -B build-llvm -G Ninja \
+    -DCMAKE_C_COMPILER="$LLVM_PREFIX/bin/clang" \
+    -DCMAKE_CXX_COMPILER="$LLVM_PREFIX/bin/clang++"
 ```
 
-On Windows, link against:
-
-```text
-BML_static.lib
-```
-
-The resulting executable does not require `BML.dll` for BML itself.
-
----
-
-# Shared Linking
-
-On Linux:
+Build it with:
 
 ```bash
-g++ -std=c++17 main.cpp \
-    -I/usr/local/include \
-    -L/usr/local/lib \
-    -lBML \
-    -o myprogram
+cmake --build build-llvm --parallel
 ```
 
-The resulting program requires:
+Using a separate build directory is recommended when switching compiler toolchains:
 
 ```text
-libBML.so
+build/
+build-llvm/
 ```
 
-at runtime.
+This prevents CMake from accidentally reusing compiler settings from a previous configuration.
 
-If `/usr/local/lib` is not already known to the dynamic linker, update the linker cache:
+### Apple Silicon and Intel Macs
+
+The same CMake commands work on both Intel Macs and Apple Silicon Macs.
+
+You can check the architecture with:
 
 ```bash
-sudo ldconfig
+uname -m
 ```
 
-Alternatively, for temporary testing:
+Typical results are:
+
+```text
+x86_64
+```
+
+for Intel Macs, and:
+
+```text
+arm64
+```
+
+for Apple Silicon.
+
+On Apple Silicon, it is generally preferable to use a native ARM64 Homebrew installation and native ARM64 compiler rather than running the entire build through Rosetta.
+
+### MacOS Debug build
+
+To create a Debug build:
 
 ```bash
-export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+cmake -S . -B build-debug -G Ninja \
+    -DCMAKE_BUILD_TYPE=Debug
 ```
 
----
+Build it:
 
-# Windows DLL Usage
+```bash
+cmake --build build-debug --parallel
+```
 
-A Windows application using the shared BML library requires:
+Run the tests:
+
+```bash
+ctest --test-dir build-debug --output-on-failure
+```
+
+Using a separate directory makes it easy to keep Release and Debug builds simultaneously:
 
 ```text
-BML.dll
+build/
+build-debug/
 ```
 
-at runtime.
+### MacOS installation
 
-The application is linked against:
-
-```text
-BML.lib
-```
-
-A typical deployment therefore contains:
-
-```text
-myprogram.exe
-BML.dll
-```
-
-The import library:
-
-```text
-BML.lib
-```
-
-is required when linking the application but normally does not need to be distributed with the finished application.
-
-For static linking, use:
-
-```text
-BML_static.lib
-```
-
-and no BML DLL is required at runtime.
-
----
-
-# Windows Symbol Exports
-
-BML uses explicit symbol visibility for Windows shared-library builds.
-
-Public API declarations use:
-
-```cpp
-BML_API
-```
-
-The implementation is defined in:
-
-```text
-include/BML/export.hpp
-```
-
-When building the Windows DLL, the shared-library target is compiled with:
-
-```text
-BML_BUILDING_DLL
-```
-
-This causes public symbols to be exported using:
-
-```cpp
-__declspec(dllexport)
-```
-
-Consumers of the DLL use:
-
-```text
-BML_USE_DLL
-```
-
-so that the declarations use:
-
-```cpp
-__declspec(dllimport)
-```
-
-Public classes, functions and operators that form part of the shared-library API must therefore have the appropriate `BML_API` declaration.
-
----
-
-# Inspecting the Windows DLL
-
-Visual Studio provides `dumpbin` for inspecting generated binaries.
-
-To list exported DLL symbols:
-
-```powershell
-dumpbin /exports BML.dll
-```
-
-To search for BML symbols:
-
-```powershell
-dumpbin /exports BML.dll |
-    Select-String "Matrix|BoolRef|RowView|StringStorage"
-```
-
-To inspect the static library:
-
-```powershell
-dumpbin /linkermember:2 BML_static.lib
-```
-
-To inspect the import library:
-
-```powershell
-dumpbin /linkermember:2 BML.lib
-```
-
----
-
-# Custom Installation Prefix
-
-The installation prefix can be changed during configuration.
+A user-local installation is often more convenient on MacOS than installing directly into `/usr/local`.
 
 For example:
 
 ```bash
-cmake -S . -B build \
-    -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
+cmake -S . -B build -G Ninja \
     -DCMAKE_INSTALL_PREFIX="$HOME/.local"
 ```
 
 Build and install:
 
 ```bash
-cmake --build build
+cmake --build build --parallel
 cmake --install build
 ```
 
-The resulting installation will be placed below:
+The headers will be installed under:
 
 ```text
-$HOME/.local/
+$HOME/.local/include/BML
 ```
 
-This allows BML to be installed without root privileges.
-
-Another possible installation prefix is:
+and the libraries under:
 
 ```text
-/opt/BML
+$HOME/.local/lib
 ```
 
-For example:
+The CMake package files will be installed under:
+
+```text
+$HOME/.local/lib/cmake/BML
+```
+
+If another CMake project needs to find this installation, the prefix can be supplied through `CMAKE_PREFIX_PATH`:
 
 ```bash
 cmake -S . -B build \
-    -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/opt/BML
+    -DCMAKE_PREFIX_PATH="$HOME/.local"
 ```
 
-Then:
+For a project that uses BML:
 
-```bash
-cmake --build build
-sudo cmake --install build
+```cmake
+find_package(BML REQUIRED)
 ```
 
----
-
-# Cleaning the Build
-
-To completely remove the generated build directory:
-
-## Linux
-
-```bash
-rm -rf build
-```
-
-## Windows PowerShell
-
-```powershell
-Remove-Item -Recurse -Force build
-```
-
-A clean configuration can then be created again:
-
-```bash
-cmake -S . -B build
-```
-
-A clean build is recommended after changing the compiler or fundamental CMake configuration.
-
----
-
-# Recommended Release Builds
-
-## Linux
-
-For a clean Release build using Ninja:
-
-```bash
-rm -rf build
-
-cmake -S . -B build \
-    -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBML_BUILD_SHARED=ON \
-    -DBML_RUN_TESTS=ON
-
-cmake --build build --parallel
-```
-
-The build will automatically enable LTO if the selected compiler supports it.
-
-Run the tests manually if required:
-
-```bash
-./build/testMatrix_shared
-./build/testMatrix_static
-```
-
-Then install:
-
-```bash
-sudo cmake --install build
-```
+The installed BML targets are exported under the `BML::` namespace.
 
 ## Windows
 
-For a clean Visual Studio Release build:
+Windows has some important differences from Linux and MacOS, particularly when using Visual Studio.
+
+The recommended Windows compiler is **Microsoft Visual C++ (MSVC)** through Visual Studio.
+
+### Visual Studio
+
+Visual Studio uses a **multi-configuration** CMake generator. Unlike Ninja, all standard configurations can be generated into the same build directory.
+
+For Visual Studio 2022:
 
 ```powershell
-Remove-Item -Recurse -Force build
-
-cmake -S . -B build `
-    -DBML_BUILD_SHARED=ON `
-    -DBML_RUN_TESTS=ON
-
-cmake --build build --config Release --parallel
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 ```
 
-Run the tests:
+The architecture can be changed if required, but `x64` is the normal choice for a modern 64-bit Windows build.
+
+After configuration, select the desired configuration when building:
 
 ```powershell
-.\build\Release\testMatrix_shared.exe
-.\build\Release\testMatrix_static.exe
+cmake --build build --config Debug
 ```
-
-Inspect the generated DLL if required:
 
 ```powershell
-dumpbin /exports .\build\Release\BML.dll
+cmake --build build --config Release
 ```
-
----
-
-# Troubleshooting
-
-## CMake cannot find a compiler
-
-Verify that the compiler is installed and available.
-
-For GCC:
-
-```bash
-g++ --version
-```
-
-For Clang:
-
-```bash
-clang++ --version
-```
-
-On Windows, configure from a Visual Studio Developer PowerShell or use a Visual Studio generator supported by the installed CMake.
-
----
-
-## LTO is not available
-
-BML checks compiler support before enabling IPO/LTO.
-
-If IPO is unsupported, CMake reports the reason and builds without LTO.
-
-LTO is an optimisation feature and is not required for BML to function correctly.
-
----
-
-## Windows DLL symbols are missing
-
-Inspect the DLL's export table:
 
 ```powershell
-dumpbin /exports BML.dll
+cmake --build build --config RelWithDebInfo
 ```
 
-Public API classes and functions that cross the DLL boundary must be declared with:
-
-```cpp
-BML_API
+```powershell
+cmake --build build --config MinSizeRel
 ```
 
-Also verify that the `BML_shared` target is being built with:
+This is different from a Ninja build.
+
+With Ninja:
+
+```text
+Configure:
+    -DCMAKE_BUILD_TYPE=Release
+
+Build:
+    cmake --build build
+```
+
+With Visual Studio:
+
+```text
+Configure:
+    cmake -S . -B build -G "Visual Studio 17 2022"
+
+Build:
+    cmake --build build --config Release
+```
+
+The `CMAKE_BUILD_TYPE` setting is therefore not used to select the active configuration with the Visual Studio generator.
+
+### Visual Studio Developer PowerShell
+
+When using MSVC directly with command-line tools such as Ninja, the MSVC compiler environment must be initialised.
+
+The easiest approach is to use the **Developer PowerShell for Visual Studio** or **Developer Command Prompt for Visual Studio**.
+
+Inside such a shell, verify that the compiler is available:
+
+```powershell
+cl
+```
+
+You can then use Ninja:
+
+```powershell
+cmake -S . -B build -G Ninja
+cmake --build build --parallel
+```
+
+Using the Visual Studio generator is generally simpler if you do not specifically need Ninja.
+
+### Windows library files
+
+Windows uses a different naming scheme for shared libraries.
+
+BML produces:
+
+```text
+BML.dll
+```
+
+for the shared library itself.
+
+The corresponding import library is:
+
+```text
+BML.lib
+```
+
+The static library is:
+
+```text
+BML_static.lib
+```
+
+These `.lib` files serve different purposes:
+
+```text
+BML.lib
+    Import library for BML.dll
+
+BML_static.lib
+    Static version of BML
+```
+
+They are **not interchangeable**.
+
+This distinction is particularly important when linking another Windows application against BML.
+
+### Running the shared-library test
+
+The shared test executable is:
+
+```text
+testMatrix_shared.exe
+```
+
+It links against the shared BML library and therefore requires:
+
+```text
+BML.dll
+```
+
+to be available at runtime.
+
+If the executable cannot find the DLL, Windows will report that the required module could not be found.
+
+When manually copying the executable outside the build directory, copy the required `BML.dll` with it or otherwise make the DLL available through the normal Windows DLL search path.
+
+After installation, the DLL is installed into the CMake runtime directory:
+
+```text
+bin/
+```
+
+while the import and static libraries are installed into:
+
+```text
+lib/
+```
+
+A typical installed layout is therefore:
+
+```text
+bin/
+    BML.dll
+
+lib/
+    BML.lib
+    BML_static.lib
+
+include/
+    BML/
+        ...
+```
+
+### MSVC-specific configuration
+
+The BML CMake configuration contains several MSVC-specific warning suppressions:
+
+```text
+C4804
+C4805
+C4244
+```
+
+These are applied to both `BML_shared` and `BML_static`.
+
+When building the shared library on Windows, BML also defines:
 
 ```text
 BML_BUILDING_DLL
 ```
 
----
+This allows the BML headers to distinguish between building the DLL and using the DLL.
 
-## Tests fail after changing the build configuration
+### Windows with Ninja
 
-Perform a clean build.
-
-Linux:
-
-```bash
-rm -rf build
-```
-
-Windows:
+Ninja can also be used with MSVC:
 
 ```powershell
-Remove-Item -Recurse -Force build
-```
-
-Then configure and build again.
-
----
-
-# Summary
-
-A standard Linux Release build is:
-
-```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G Ninja
 cmake --build build --parallel
 ```
 
-A standard Windows Release build is:
+However, the MSVC developer environment must be active so that `cl.exe` and the associated linker and SDK tools are available.
+
+For a straightforward Windows build, the Visual Studio generator is usually the simpler option:
 
 ```powershell
-cmake -S . -B build
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release --parallel
 ```
 
-Install on Linux with:
+## Libraries
 
-```bash
-sudo cmake --install build
-```
-
-BML builds both shared and static libraries:
+BML creates two library targets:
 
 ```text
-Linux:
-    libBML.so
-    libBML.a
-
-Windows:
-    BML.dll
-    BML.lib
-    BML_static.lib
+BML_static
+BML_shared
 ```
 
-Both the shared and static test programs should be run successfully before considering a build ready for installation.
+The static library is built from:
+
+```text
+src/instantiations.cpp
+```
+
+The shared library uses the same source.
+
+The public headers are taken from:
+
+```text
+include/
+```
+
+### Static library
+
+The static target is:
+
+```text
+BML_static
+```
+
+On Linux and other non-Windows platforms, its output name is:
+
+```text
+libBML.a
+```
+
+On Windows, its output name is:
+
+```text
+BML_static
+```
+
+### Shared library
+
+The shared target is:
+
+```text
+BML_shared
+```
+
+Its output name is:
+
+```text
+BML
+```
+
+The exact filename produced by the compiler/platform is platform-dependent.
+
+For example, on Linux this results in the usual shared-library naming convention:
+
+```text
+libBML.so
+```
+
+On MacOS, the corresponding shared-library form is normally:
+
+```text
+libBML.dylib
+```
+
+On Windows, the shared library is normally produced as:
+
+```text
+BML.dll
+```
+
+with its associated import library:
+
+```text
+BML.lib
+```
+
+## The `BML` target
+
+BML provides a convenient `BML` alias.
+
+The CMake option controlling the alias is:
+
+```cmake
+option(BML_BUILD_SHARED "Build shared library" ON)
+```
+
+It defaults to `ON`.
+
+When enabled:
+
+```text
+BML → BML_shared
+```
+
+When disabled:
+
+```text
+BML → BML_static
+```
+
+For example:
+
+```bash
+cmake -S . -B build -G Ninja -DBML_BUILD_SHARED=OFF
+```
+
+makes `BML` refer to the static library.
+
+This option does **not** prevent the underlying `BML_shared` or `BML_static` target from being created. Both library targets are defined by the project; the option determines which one the `BML` alias represents.
+
+## Tests
+
+BML contains two separate test executables.
+
+### Shared-library test
+
+```text
+testMatrix_shared
+```
+
+This is built from:
+
+```text
+src/testMatrix.cpp
+```
+
+and links against:
+
+```text
+BML_shared
+```
+
+### Static-library test
+
+```text
+testMatrix_static
+```
+
+This also uses:
+
+```text
+src/testMatrix.cpp
+```
+
+but links against:
+
+```text
+BML_static
+```
+
+This allows the same test program to be tested against both forms of the library.
+
+## CTest
+
+Testing is enabled with:
+
+```cmake
+enable_testing()
+```
+
+Two CTest tests are registered:
+
+```text
+Matrix_Shared
+Matrix_Static
+```
+
+After building, run the complete test suite with:
+
+```bash
+ctest --test-dir build
+```
+
+For verbose test output:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+The two CTest tests execute:
+
+```text
+testMatrix_shared
+testMatrix_static
+```
+
+respectively.
+
+## LTO / IPO
+
+BML automatically checks whether the compiler supports CMake's interprocedural optimisation (IPO) facility:
+
+```cmake
+include(CheckIPOSupported)
+
+check_ipo_supported(
+    RESULT BML_IPO_SUPPORTED
+    OUTPUT BML_IPO_ERROR
+    LANGUAGES CXX
+)
+```
+
+If supported, IPO is enabled for all four main build targets:
+
+```text
+BML_static
+BML_shared
+testMatrix_shared
+testMatrix_static
+```
+
+CMake reports:
+
+```text
+Building with LTO
+```
+
+when this is enabled.
+
+If the compiler does not support IPO/LTO, CMake does not abort the build. Instead, it produces a warning:
+
+```text
+LTO/IPO is not supported: ...
+```
+
+and the project continues without IPO.
+
+There is currently no separate `BML_ENABLE_LTO` option. LTO is automatically selected when supported by the compiler and build environment.
+
+## Installation
+
+The project uses CMake's standard installation directory variables from:
+
+```cmake
+include(GNUInstallDirs)
+```
+
+The main installation locations are therefore platform-aware.
+
+The libraries are installed to:
+
+```text
+${CMAKE_INSTALL_LIBDIR}
+```
+
+Executables/DLL runtime files are installed to:
+
+```text
+${CMAKE_INSTALL_BINDIR}
+```
+
+Headers are installed to:
+
+```text
+${CMAKE_INSTALL_INCLUDEDIR}/BML
+```
+
+On a typical Linux installation with the default `/usr/local` prefix, this corresponds to locations such as:
+
+```text
+/usr/local/include/BML
+/usr/local/lib
+```
+
+Install the project with:
+
+```bash
+cmake --install build
+```
+
+A different installation prefix can be selected during configuration:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_INSTALL_PREFIX=$HOME/.local
+```
+
+and then:
+
+```bash
+cmake --install build
+```
+
+## CMake package support
+
+BML installs a CMake package configuration so that another CMake project can find the installed library.
+
+The package files are installed under:
+
+```text
+${CMAKE_INSTALL_LIBDIR}/cmake/BML
+```
+
+The installed package contains:
+
+```text
+BMLConfig.cmake
+BMLConfigVersion.cmake
+BMLTargets.cmake
+```
+
+The exported targets use the namespace:
+
+```text
+BML::
+```
+
+The package version is generated from the project version:
+
+```text
+2.0.1
+```
+
+and uses:
+
+```text
+COMPATIBILITY SameMajorVersion
+```
+
+This means compatible BML 2.x releases can be treated as belonging to the same major-version compatibility range.
+
+A consuming CMake project can therefore use the installed package with:
+
+```cmake
+find_package(BML REQUIRED)
+```
+
+and link against the exported BML targets.
+
+## Doxygen
+
+CMake also processes the project's Doxygen configuration:
+
+```cmake
+configure_file(
+    Doxyfile
+    ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+    @ONLY
+)
+```
+
+This creates a configured copy of `Doxyfile` in the build directory.
+
+The CMake configuration shown here does **not** define a Doxygen build target itself. Documentation generation is handled separately from the library build.
+
+## Useful CMake commands
+
+### Ninja
+
+Configure:
+
+```bash
+cmake -S . -B build -G Ninja
+```
+
+Build:
+
+```bash
+cmake --build build --parallel
+```
+
+Run tests:
+
+```bash
+ctest --test-dir build
+```
+
+Run tests and show failures:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+Install:
+
+```bash
+cmake --install build
+```
+
+Configure a Debug build:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+```
+
+Configure a `RelWithDebInfo` build:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+```
+
+Configure a `MinSizeRel` build:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel
+```
+
+Build using the static `BML` alias:
+
+```bash
+cmake -S . -B build -G Ninja -DBML_BUILD_SHARED=OFF
+```
+
+Configure with a custom installation prefix:
+
+```bash
+cmake -S . -B build -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=$HOME/.local
+```
+
+### Visual Studio
+
+Configure a 64-bit Visual Studio build:
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+```
+
+Build Release:
+
+```powershell
+cmake --build build --config Release --parallel
+```
+
+Build Debug:
+
+```powershell
+cmake --build build --config Debug --parallel
+```
+
+Build `RelWithDebInfo`:
+
+```powershell
+cmake --build build --config RelWithDebInfo --parallel
+```
+
+Build `MinSizeRel`:
+
+```powershell
+cmake --build build --config MinSizeRel --parallel
+```
+
+Run the tests for a specific Visual Studio configuration:
+
+```powershell
+ctest --test-dir build -C Release --output-on-failure
+```
+
+Install a specific Visual Studio configuration:
+
+```powershell
+cmake --install build --config Release
+```
+
+## Build structure
+
+The important targets are:
+
+```text
+BML_static
+    └── libBML.a / BML_static.lib / platform equivalent
+
+BML_shared
+    └── libBML.so / libBML.dylib / BML.dll
+
+BML
+    └── alias to BML_shared or BML_static
+
+testMatrix_shared
+    └── links to BML_shared
+
+testMatrix_static
+    └── links to BML_static
+```
+
+The project therefore provides both library variants while allowing users and downstream CMake projects to select the preferred `BML` target.
