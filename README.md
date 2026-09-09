@@ -12,6 +12,10 @@ The library has been tested on true metal Debian 13 x86-64. In virtual machines 
 * Debian 13 ppc64
 * Debian 13 risc-v64
 
+Via github actions it has also been tested on:
+*Mac OS
+
+
 ## Supported data types
 
 BML supports the following data types:
