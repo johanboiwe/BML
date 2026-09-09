@@ -8,8 +8,11 @@ The site contains:
     _site/
         index.html
         version-selector.js
+        version-selector.css
         <version>/
             index.html
+            version-selector.js
+            version-selector.css
 
 The master documentation is generated from the current repository
 checkout.
@@ -35,12 +38,14 @@ VERSION_SELECTOR_TEMPLATE = (
         / "webb"
         / "version-selector.js"
 )
+
 VERSION_SELECTOR_CSS = (
         REPOSITORY_ROOT
         / ".github"
         / "webb"
         / "version-selector.css"
 )
+
 PAGES_BASE_PATH = "/BML/"
 
 
@@ -182,7 +187,7 @@ def create_version_options(release_tags):
 
 def generate_version_selector(release_tags):
     """
-    Generate the version selector JavaScript and CSS.
+    Generate the version selector JavaScript and copy the CSS.
     """
 
     template = VERSION_SELECTOR_TEMPLATE.read_text(
@@ -205,7 +210,7 @@ def generate_version_selector(release_tags):
 
     selector_path.write_text(
         generated,
-        encoding="utf-8"
+        encoding="utf-8",
     )
 
     css_path = SITE_DIRECTORY / "version-selector.css"
@@ -218,29 +223,64 @@ def generate_version_selector(release_tags):
     print("Generated:", selector_path)
     print("Copied:", css_path)
 
-def add_version_selector_to_site():
+
+def install_version_selector():
     """
-    Copy version-selector.js into every documentation directory.
-
-    Doxygen's generated HTML already contains the script reference.
+    Install the version selector JavaScript and CSS into every
+    generated HTML directory and add the required references to
+    every HTML page.
     """
 
-    selector_source = SITE_DIRECTORY / "version-selector.js"
+    selector_js = SITE_DIRECTORY / "version-selector.js"
+    selector_css = SITE_DIRECTORY / "version-selector.css"
 
-    for html_directory in [SITE_DIRECTORY] + [
-        directory
-        for directory in SITE_DIRECTORY.iterdir()
-        if directory.is_dir()
-    ]:
-        selector_destination = (
-                html_directory / "version-selector.js"
+    html_files = list(SITE_DIRECTORY.rglob("*.html"))
+
+    for html_file in html_files:
+        html_directory = html_file.parent
+
+        js_destination = html_directory / "version-selector.js"
+        css_destination = html_directory / "version-selector.css"
+
+        if html_directory != SITE_DIRECTORY:
+            shutil.copy2(
+                selector_js,
+                js_destination,
+            )
+
+            shutil.copy2(
+                selector_css,
+                css_destination,
+            )
+
+        html = html_file.read_text(
+            encoding="utf-8"
         )
 
-        if selector_destination != selector_source:
-            shutil.copy2(
-                selector_source,
-                selector_destination,
+        if 'href="version-selector.css"' not in html:
+            html = html.replace(
+                "</head>",
+                '    <link href="version-selector.css" rel="stylesheet" type="text/css" />\n'
+                "</head>",
+                1,
             )
+
+        if 'src="version-selector.js"' not in html:
+            html = html.replace(
+                "</body>",
+                '    <script type="text/javascript" src="version-selector.js"></script>\n'
+                "</body>",
+                1,
+            )
+
+        html_file.write_text(
+            html,
+            encoding="utf-8",
+        )
+
+    print(
+        f"Installed version selector into {len(html_files)} HTML files."
+    )
 
 
 def build_master_documentation():
@@ -369,7 +409,7 @@ def main():
 
     generate_version_selector(release_tags)
 
-    add_version_selector_to_site()
+    install_version_selector()
 
     print()
     print("Documentation build complete.")
