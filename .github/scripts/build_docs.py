@@ -32,7 +32,7 @@ SITE_DIRECTORY = REPOSITORY_ROOT / "_site"
 VERSION_SELECTOR_TEMPLATE = (
         REPOSITORY_ROOT
         / ".github"
-        / "scripts"
+        / "webb"
         / "version-selector.js"
 )
 
