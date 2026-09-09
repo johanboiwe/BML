@@ -171,7 +171,7 @@ def create_version_options(release_tags):
     options = []
 
     options.append(
-        f'<option value="{PAGES_BASE_PATH}" selected>master</option>'
+        f'<option value="{PAGES_BASE_PATH}">master</option>'
     )
 
     for tag in release_tags:

@@ -8,11 +8,6 @@
  *     __VERSION_OPTIONS__
  *
  * with the list of available documentation versions.
- *
- * The generated JavaScript file is copied into the generated
- * Doxygen documentation directories and loaded by every HTML page.
- *
- * The selector uses only standard browser APIs.
  */
 
 (function () {
@@ -40,6 +35,19 @@
 
     select.id = "bml-version-select";
     select.innerHTML = `__VERSION_OPTIONS__`;
+
+    /*
+     * Select the version corresponding to the current page.
+     */
+
+    const currentPath = window.location.pathname;
+
+    for (const option of select.options) {
+      if (option.value === currentPath) {
+        option.selected = true;
+        break;
+      }
+    }
 
     select.addEventListener("change", function () {
       window.location.href = this.value;
