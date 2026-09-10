@@ -1564,7 +1564,7 @@ void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t b
     std::enable_if_t<bml_is_bool<U>::value, bool>
     Matrix<T>::none() const noexcept
     {
-        for (bool cell : data)
+        for (const bool cell : data)
             if (cell) return false;       // first true => not none
         return true;                    // empty matrix returns true
     }
