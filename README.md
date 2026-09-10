@@ -34,6 +34,7 @@ BML supports the following data types:
 * char
 * bool
 * std::string
+* Json
 * void* — generic pointers for storing references to arbitrary objects
 
 ## Installation
