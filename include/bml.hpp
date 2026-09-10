@@ -35,5 +35,6 @@
 #include "rowView.hpp"         // RowView / ColView proxies
 #include "boolRef.hpp"         // BoolRef proxy for Matrix<bool>
 #include "stringStorage.hpp"   // StringStorage helper for Matrix<std::string>
+#include "json.hpp"             // for the JSON implementation
 
 #endif // BML_HPP

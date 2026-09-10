@@ -17,6 +17,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
+# ---------- Dependencies ----------
+
+add_library(nlohmann_json INTERFACE)
+
+target_include_directories(nlohmann_json
+        INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/nlohmann/single_include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+
 # ---------- Library sources ----------
 
 set(BML_LIB_SOURCES
@@ -39,6 +50,16 @@ target_include_directories(BML_shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+target_link_libraries(BML_static
+        PUBLIC
+        nlohmann_json
+)
+
+target_link_libraries(BML_shared
+        PUBLIC
+        nlohmann_json
 )
 
 set(BML_TARGETS
@@ -187,7 +208,10 @@ endif()
 
 # ---------- Installation ----------
 
-install(TARGETS BML_static BML_shared
+install(TARGETS
+        BML_static
+        BML_shared
+        nlohmann_json
         EXPORT BMLTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -197,6 +221,12 @@ install(TARGETS BML_static BML_shared
 install(
         DIRECTORY include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/BML
+)
+
+install(
+        FILES
+        external/nlohmann/single_include/nlohmann/json.hpp
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nlohmann
 )
 
 

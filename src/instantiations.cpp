@@ -52,7 +52,8 @@ namespace bml
     X(bool)
 
 #define BML_SPECIAL_TYPES(X) \
-    X(std::string)
+X(std::string)            \
+X(Json)
 
     // -----------------------------------------------------------------------------
     // Class template instantiations (INCLUDING BOOL)
@@ -218,22 +219,37 @@ namespace bml
     // -----------------------------------------------------------------------------
     // Free comparison operator instantiations
     // -----------------------------------------------------------------------------
-#define BML_INSTANTIATE_COMPARISONS(T) \
-    template BML_API bool operator==<T>(const Matrix<T>&, const Matrix<T>&); \
-    template BML_API bool operator!=<T>(const Matrix<T>&, const Matrix<T>&); \
-    template BML_API bool operator< <T>(const Matrix<T>&, const Matrix<T>&); \
-    template BML_API bool operator> <T>(const Matrix<T>&, const Matrix<T>&); \
-    template BML_API bool operator<=<T>(const Matrix<T>&, const Matrix<T>&); \
-    template BML_API bool operator>=<T>(const Matrix<T>&, const Matrix<T>&);
+#define BML_INSTANTIATE_EQUALITY(T) \
+template BML_API bool operator==<T>(const Matrix<T>&, const Matrix<T>&); \
+template BML_API bool operator!=<T>(const Matrix<T>&, const Matrix<T>&);
 
-#define X(T) BML_INSTANTIATE_COMPARISONS(T)
+#define BML_INSTANTIATE_ORDERING(T) \
+template BML_API bool operator< <T>(const Matrix<T>&, const Matrix<T>&); \
+template BML_API bool operator> <T>(const Matrix<T>&, const Matrix<T>&); \
+template BML_API bool operator<=<T>(const Matrix<T>&, const Matrix<T>&); \
+template BML_API bool operator>=<T>(const Matrix<T>&, const Matrix<T>&);
+
+
+    // Equality: all supported types, including Json
+#define X(T) BML_INSTANTIATE_EQUALITY(T)
     BML_INTEGRAL_MATH_TYPES(X)
     BML_FLOAT_TYPES(X)
     BML_CHARLIKE_TYPES(X)
     BML_BOOL_TYPES(X)
-    BML_SPECIAL_TYPES(X)   // include std::string for <, >, <=, >= too
+    BML_SPECIAL_TYPES(X)
 #undef X
-#undef BML_INSTANTIATE_COMPARISONS
+
+
+// Ordering: only types for which ordering is supported
+#define X(T) BML_INSTANTIATE_ORDERING(T)
+    BML_INTEGRAL_MATH_TYPES(X)
+    BML_FLOAT_TYPES(X)
+    BML_CHARLIKE_TYPES(X)
+    BML_BOOL_TYPES(X)
+#undef X
+
+#undef BML_INSTANTIATE_EQUALITY
+#undef BML_INSTANTIATE_ORDERING
 
     // -----------------------------------------------------------------------------
     // Sanity checks for operator[] result types (requires BoolRef from rowView.hpp)

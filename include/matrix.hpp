@@ -11,6 +11,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "json.hpp"
+
 /**
  * @file matrix.hpp
  * @brief Defines the bml::Matrix class.
@@ -36,7 +38,7 @@ namespace bml
     /**
      * @brief Matrix class. Internally stores values flat, but present them as 2d.
     * @tparam T can be bool, {u,}int{8,16,32,64}_t, "
-            "float/double/long double, char, std::string"
+            "float/double/long double, char, std::string or Json"
      */
     template <typename T>
     class BML_API Matrix
@@ -44,9 +46,9 @@ namespace bml
         // Fail fast for completely unsupported storage types.
         static_assert(
             bml_is_bool<T>::value || bml_is_math_arithmetic<T>::value
-            || std::is_same_v<T, char> || std::is_same_v<T, std::string>,
+            || std::is_same_v<T, char> || std::is_same_v<T, std::string> || std::is_same_v<T, Json>,
             "bml::Matrix<T>: unsupported T (allowed: bool, {u,}int{8,16,32,64}_t, "
-            "float/double/long double, char, std::string)"
+            "float/double/long double, char, std::string), JSON"
         );
 
     private:
@@ -222,6 +224,7 @@ namespace bml
          * @brief init the matrix's values from a bytestream.
          * @param byteStream uint8_t (char)* bytestream
          * @param byteSize size_t length of byte stream
+         * @note std::string and Json is deserialised using @see StringStorage
          */
         void initFromByteStream(const std::uint8_t* byteStream, size_t byteSize);
 
@@ -229,13 +232,14 @@ namespace bml
         /**
          * @see bml::matrix::initFromByteStream
          * @param byteStream std::vector<uint8_t>
+         * @note std::string and Json is deserialised using @see StringStorage
          */
         void initFromByteStream(const std::vector<uint8_t>& byteStream);
 
 
         /**
          * @brief Serialises the values of the matrix into a bytestream.
-         * @note String is serialised using @see StringStorage
+         * @note std::string and Json is serialised using @see StringStorage
          * @return a bytestream of the matrix inside a vector
          */
         [[nodiscard]] std::vector<std::uint8_t> toByteStream() const;
