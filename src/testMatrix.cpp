@@ -3,7 +3,6 @@
 // (Adjust include path to where your BML headers live.)
 
 #include "../include/bml.hpp"           // assumes this aggregates Matrix, traits, TraversalType, etc.
-
 #include <algorithm>
 #include <chrono>
 #include <cmath>

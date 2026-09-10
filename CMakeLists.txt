@@ -164,6 +164,7 @@ set_target_properties(BML_shared PROPERTIES
 
 
 # ---------- LTO ----------
+option(BML_ENABLE_LTO "Enable link-time optimisation" ON)
 
 include(CheckIPOSupported)
 
@@ -173,7 +174,7 @@ check_ipo_supported(
         LANGUAGES CXX
 )
 
-if(BML_IPO_SUPPORTED)
+if(BML_ENABLE_LTO AND BML_IPO_SUPPORTED)
 
     set_property(
             TARGET BML_static
@@ -196,6 +197,10 @@ if(BML_IPO_SUPPORTED)
     )
 
     message(STATUS "Building with LTO")
+
+elseif(NOT BML_ENABLE_LTO)
+
+    message(STATUS "LTO disabled")
 
 else()
 

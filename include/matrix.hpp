@@ -10,7 +10,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include "json.hpp"
+#include "jsonFwd.hpp"
 
 /**
  * @file matrix.hpp
