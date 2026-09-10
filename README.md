@@ -117,3 +117,9 @@ BML is under active development. The API may change between versions.
 ## Licence
 
 See [LICENSE](LICENSE.md).
+## Acknowledgements
+
+BML uses [nlohmann/json](https://github.com/nlohmann/json) for JSON support.
+
+nlohmann/json is licensed under the MIT License. The library is vendored in BML under `external/nlohmann/`.
+
