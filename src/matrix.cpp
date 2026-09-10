@@ -338,7 +338,77 @@ void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t b
     }
 }
 
+template<>
+void Matrix<Json>::initFromByteStream(const uint8_t* byteStream, size_t byteSize)
+{
+    if (byteStream == nullptr && byteSize != 0)
+        throw std::runtime_error("Null bytestream pointer with non-zero size");
 
+    std::size_t location = 0;
+
+    std::vector<StringStorage> jsons;
+    jsons.reserve(data.size());
+
+    const std::size_t expected = data.size();
+
+    for (std::size_t i = 0; i < expected; ++i)
+    {
+        // need 2 bytes for length
+        if (location + 2 > byteSize)
+            throw std::runtime_error(
+                std::string("Truncated length at string index ") + std::to_string(i) +
+                ", need 2 bytes at offset " + std::to_string(location) +
+                ", have " + std::to_string(byteSize - location)
+            );
+
+        // peek LE16 length before constructing
+        const std::uint16_t len = static_cast<std::uint16_t>(
+            byteStream[location] |
+            (static_cast<std::uint16_t>(byteStream[location + 1]) << 8)
+        );
+
+        // need 'len' bytes of payload
+        const std::size_t avail = byteSize - (location + 2);
+        if (avail < static_cast<std::size_t>(len))
+            throw std::runtime_error(
+                std::string("Truncated payload at string index ") + std::to_string(i) +
+                " (len=" + std::to_string(len) +
+                ", available=" + std::to_string(avail) +
+                ", offset=" + std::to_string(location + 2) + ")"
+            );
+
+        // safe to construct now
+        StringStorage currentJson(byteStream + location);
+        location += static_cast<std::size_t>(len) + 2;
+        jsons.push_back(currentJson);
+    }
+
+    // exact-end validation
+    if (location != byteSize)
+    {
+        if (location < byteSize)
+            throw std::runtime_error(
+                std::string("Leftover bytes after reading Json: ") +
+                std::to_string(byteSize - location)
+            );
+        else
+            throw std::runtime_error("Consumed beyond end of bytestream");
+    }
+
+    if (jsons.size() != data.size()) {
+        throw std::runtime_error(
+            std::string("Bytestream and matrix size do not match: strings=") +
+            std::to_string(jsons.size()) +
+            ", matrix=" + std::to_string(data.size())
+        );
+    }
+
+    const std::size_t matrixSize = data.size();
+        for (std::size_t i = 0; i < matrixSize; ++i)
+        {
+            data[i] = Json::parse(jsons[i].toString());
+        }
+}
     template<>
     std::vector<uint8_t> Matrix<std::string>::toByteStream() const
     {
@@ -362,6 +432,40 @@ void Matrix<std::string>::initFromByteStream(const uint8_t* byteStream, size_t b
 
             //length is good, we can now serialise the string
             StringStorage stringStorage = StringStorage(cell);
+            std::vector<std::uint8_t> bytes = stringStorage.toBytes();
+            for(uint8_t i: bytes)
+            {
+                result.push_back(i);
+            }
+        }
+
+        return result;
+    }
+
+    template<>
+    std::vector<uint8_t> Matrix<Json>::toByteStream() const
+    {
+        std::vector<uint8_t> result;
+
+
+        for (const auto& [r, c, cell] : *this)
+        {
+
+            if (cell.dump().size() > static_cast<std::size_t>(0xFFFF))
+            {
+                throw std::length_error(
+                    std::string("Max size to serialise a JSON is ")
+                    + std::to_string(0xFFFF)
+                    + "; JSON at row "
+                    + std::to_string(r)
+                    + ", column "
+                    + std::to_string(c)
+                    + " has length "
+                    + std::to_string(cell.size())
+                );}
+
+            //length is good, we can now serialise the JSON
+            StringStorage stringStorage = StringStorage(cell.dump());
             std::vector<std::uint8_t> bytes = stringStorage.toBytes();
             for(uint8_t i: bytes)
             {

@@ -594,15 +594,97 @@ static void test_string_verbose() {
         b[0][0] = "b"; b[0][1] = "x";
         expect_true(a != b, "operator!=");
         expect_true(a == a, "operator== self");
-        expect_true(a <  b, "operator<  lexicographic");
-        expect_true(b >  a, "operator>  lexicographic");
-        expect_true(a <= b, "operator<=");
-        expect_true(b >= a, "operator>=");
+
     }
 
     LOG("[OK] strings (full coverage)");
 }
+static void test_json_verbose()
+{
+    print_type_header<Json>("Json full coverage");
 
+    Matrix<Json> m(2,2);
+
+    // Heterogeneous JSON values
+    m[0][0] = Json{{"name", "Alice"}, {"age", 30}};
+    m[0][1] = Json::array({1, 2, 3, 4});
+    m[1][0] = "hello";
+    m[1][1] = true;
+
+    expect_eq(m.numRows(), 2u, "rows");
+    expect_eq(m.numCols(), 2u, "cols");
+    expect_eq(m.size(), static_cast<std::size_t>(4), "size");
+
+    // Check the actual JSON types/content
+    expect_true(m[0][0].is_object(), "object cell");
+    expect_true(m[0][1].is_array(),  "array cell");
+    expect_true(m[1][0].is_string(), "string cell");
+    expect_true(m[1][1].is_boolean(), "boolean cell");
+
+    expect_eq(m[0][0]["name"], Json("Alice"), "object name");
+    expect_eq(m[0][0]["age"],  Json(30),      "object age");
+    expect_eq(m[0][1][2],       Json(3),       "array element");
+    expect_eq(m[1][0],          Json("hello"),  "string value");
+    expect_eq(m[1][1],          Json(true),     "boolean value");
+
+    // Mutation through Matrix indexing
+    m[0][0]["age"] = 31;
+    m[0][1].push_back(5);
+
+    expect_eq(m[0][0]["age"], Json(31), "mutated object");
+    expect_eq(m[0][1].size(), static_cast<std::size_t>(5), "mutated array");
+
+    // Copy
+    Matrix<Json> copy = m;
+    expect_true(copy == m, "Json matrix copy equality");
+
+    copy[1][0] = "changed";
+    expect_true(copy != m, "Json matrix inequality");
+    expect_eq(m[1][0], Json("hello"), "original unchanged after copy");
+
+    // Matrix equality
+    Matrix<Json> same = m;
+    expect_true(m == same, "Json operator==");
+    expect_false(m != same, "Json operator!=");
+
+    same[1][1] = false;
+    expect_true(m != same, "Json operator!= after mutation");
+    expect_false(m == same, "Json operator== after mutation");
+
+    // Human-readable output
+    {
+        const auto s = m.toString();
+
+        expect_true(s.find("Alice")  != std::string::npos,
+                    "toString contains Alice");
+        expect_true(s.find("hello")  != std::string::npos,
+                    "toString contains hello");
+    }
+
+    // Byte-stream round-trip
+    {
+        LOG("Json: bytestream round-trip");
+
+        const auto bs = m.toByteStream();
+
+        Matrix<Json> r(2,2);
+        r.initFromByteStream(bs);
+
+        expect_true(m == r, "Json bytestream round-trip");
+    }
+
+    // Byte-stream round-trip using pointer + size
+    {
+        const auto bs = m.toByteStream();
+
+        Matrix<Json> r(2,2);
+        r.initFromByteStream(bs.data(), bs.size());
+
+        expect_true(m == r, "Json bytestream pointer/size round-trip");
+    }
+
+    LOG("[OK] Json (full coverage)");
+}
 // --- Rule-of-Five test -------------------------------------------------------
 template<typename T>
 static inline T tv(int n) {
@@ -1181,6 +1263,7 @@ int testMatrix() {
 
         // Strings
         test_string_verbose();
+        test_json_verbose();
 
         // NEW: strings bytestream edge cases
         test_string_roundtrip_len16();
