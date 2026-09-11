@@ -17,6 +17,7 @@
 #include "rowView.cpp"
 #include "boolRef.cpp"
 #include "stringStorage.cpp"
+#include <half.hpp>
 
 
 namespace bml
@@ -43,7 +44,8 @@ namespace bml
 #define BML_FLOAT_TYPES(X) \
     X(float)               \
     X(double)              \
-    X(long double)
+    X(long double)          \
+    X(half_float::half)
 
 #define BML_CHARLIKE_TYPES(X) \
     X(char)

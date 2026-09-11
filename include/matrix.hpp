@@ -1,8 +1,7 @@
 #ifndef BML_MATRIX_HPP
 #define BML_MATRIX_HPP
-
-#include "export.hpp"
 #include "typeTraits.hpp"
+#include "export.hpp"
 #include "rowView.hpp"
 #include "traversal.hpp"
 
