@@ -65,6 +65,8 @@ const char* type_name() {
     if constexpr (std::is_same_v<T, bool>)          return "bool";
     if constexpr (std::is_same_v<T, std::string>)   return "std::string";
     if constexpr (std::is_same_v<T, void*>)         return "void*";
+    if constexpr (std::is_same_v<T, half_float::half>)    return "half";
+    if constexpr (std::is_same_v<T, nlohmann::json>)    return "JSON";
     return "unknown";
 }
 
@@ -1199,6 +1201,7 @@ int testMatrix() {
         CALL_CORE_AND_POD(float)
         CALL_CORE_AND_POD(double)
         CALL_CORE_AND_POD(long double)
+        CALL_CORE_AND_POD(half_float::half)
         CALL_CORE_AND_POD(char)
         #undef CALL_CORE_AND_POD
 
@@ -1238,6 +1241,7 @@ int testMatrix() {
         test_arithmetic_verbose<float>();
         test_arithmetic_verbose<double>();
         test_arithmetic_verbose<long double>();
+        test_arithmetic_verbose<half_float::half>();
 
         // Integral-only ops
         test_integral_ops_verbose<std::int8_t>();

@@ -194,6 +194,8 @@ X(Json)
     INSTANTIATE_ARITH(float)          INSTANTIATE_REDUCTIONS(float)
     INSTANTIATE_ARITH(double)         INSTANTIATE_REDUCTIONS(double)
     INSTANTIATE_ARITH(long double)    INSTANTIATE_REDUCTIONS(long double)
+    INSTANTIATE_ARITH(half_float::half)    INSTANTIATE_REDUCTIONS(half_float::half)
+
 
     INSTANTIATE_INT_ONLY(std::int8_t)
     INSTANTIATE_INT_ONLY(std::uint8_t)
