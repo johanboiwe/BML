@@ -1,5 +1,5 @@
-#ifndef BML_VECTOR2_HPP
-#define BML_VECTOR2_HPP
+#ifndef BML_VECTOR3_HPP
+#define BML_VECTOR3_HPP
 
 #include <cmath>
 #include <type_traits>
@@ -8,44 +8,44 @@
 namespace bml {
 
 /**
- * @brief A two-dimensional vector with floating-point components.
+ * @brief A three-dimensional vector with floating-point components.
  *
- * Vector2 represents a point, direction, or general two-dimensional
- * quantity using two floating-point values.
+ * Vector3 represents a point, direction, or general three-dimensional
+ * quantity using three floating-point values.
  *
  * The component type is supplied as the template parameter. BML provides
  * convenient aliases for the commonly used floating-point precisions:
  *
  * @code
- * bml::Vector2h halfVector{1.0f, 2.0f};
- * bml::Vector2f floatVector{1.0f, 2.0f};
- * bml::Vector2d doubleVector{1.0, 2.0};
+ * bml::Vector3h halfVector{1.0f, 2.0f, 3.0f};
+ * bml::Vector3f floatVector{1.0f, 2.0f, 3.0f};
+ * bml::Vector3d doubleVector{1.0, 2.0, 3.0};
  * @endcode
  *
- * @tparam T The floating-point type used for both components.
+ * @tparam T The floating-point type used for all components.
  *
  * @note T must be a type recognised by std::is_floating_point_v.
  *
  * @par Arithmetic
  *
- * Vector2 supports the usual vector arithmetic operations:
+ * Vector3 supports the usual vector arithmetic operations:
  *
  * @code
- * Vector2f a{2.0f, 3.0f};
- * Vector2f b{4.0f, 5.0f};
+ * Vector3f a{2.0f, 3.0f, 4.0f};
+ * Vector3f b{4.0f, 5.0f, 6.0f};
  *
- * auto sum  = a + b;       // {6, 8}
- * auto diff = a - b;       // {-2, -2}
- * auto neg  = -a;          // {-2, -3}
+ * auto sum     = a + b;        // {6, 8, 10}
+ * auto diff    = a - b;        // {-2, -2, -2}
+ * auto neg     = -a;           // {-2, -3, -4}
  *
- * auto scaled = a * 2.0f;  // {4, 6}
- * auto divided = a / 2.0f; // {1, 1.5}
+ * auto scaled  = a * 2.0f;     // {4, 6, 8}
+ * auto divided = a / 2.0f;     // {1, 1.5, 2}
  * @endcode
  *
  * Scalar multiplication is commutative:
  *
  * @code
- * auto a = Vector2f{2.0f, 3.0f};
+ * auto a = Vector3f{2.0f, 3.0f, 4.0f};
  *
  * auto b = a * 2.0f;
  * auto c = 2.0f * a;
@@ -58,36 +58,47 @@ namespace bml {
  * The dot product is calculated using:
  *
  * @code
- * x1 * x2 + y1 * y2
+ * x1 * x2 + y1 * y2 + z1 * z2
  * @endcode
  *
  * and produces a scalar value:
  *
  * @code
- * Vector2f a{1.0f, 2.0f};
- * Vector2f b{3.0f, 4.0f};
+ * Vector3f a{1.0f, 2.0f, 3.0f};
+ * Vector3f b{4.0f, 5.0f, 6.0f};
  *
- * float result = a.dot(b); // 11
+ * float result = a.dot(b); // 32
  * @endcode
  *
  * The dot product is useful for determining the relationship between
  * directions, including whether vectors point generally in the same or
  * opposite directions and whether they are perpendicular.
  *
- * @par 2D cross product
+ * @par Cross product
  *
- * In two dimensions, the cross product produces a scalar rather than
- * another vector:
+ * In three dimensions, the cross product produces another Vector3 that
+ * is perpendicular to both input vectors.
+ *
+ * The cross product is calculated using:
  *
  * @code
- * Vector2f a{1.0f, 0.0f};
- * Vector2f b{0.0f, 1.0f};
- *
- * float result = a.cross(b); // 1
+ * {
+ *     y1 * z2 - z1 * y2,
+ *     z1 * x2 - x1 * z2,
+ *     x1 * y2 - y1 * x2
+ * }
  * @endcode
  *
- * The sign of the result indicates the orientation from one vector to
- * the other.
+ * For example:
+ *
+ * @code
+ * Vector3f a{1.0f, 0.0f, 0.0f};
+ * Vector3f b{0.0f, 1.0f, 0.0f};
+ *
+ * auto result = a.cross(b); // {0, 0, 1}
+ * @endcode
+ *
+ * The direction of the resulting vector follows the right-hand rule.
  *
  * @par Length
  *
@@ -96,15 +107,15 @@ namespace bml {
  * compared:
  *
  * @code
- * Vector2f a{3.0f, 4.0f};
+ * Vector3f a{2.0f, 3.0f, 6.0f};
  *
- * float squared = a.lengthSquared(); // 25
- * float length   = a.length();       // 5
+ * float squared = a.lengthSquared(); // 49
+ * float length   = a.length();       // 7
  * @endcode
  *
  * @par Equality
  *
- * Equality compares both components using their native == operators.
+ * Equality compares all three components using their native == operators.
  * No epsilon or approximate comparison is performed.
  *
  * This means that:
@@ -113,20 +124,20 @@ namespace bml {
  * a == b
  * @endcode
  *
- * is true only when both x components compare equal and both y components
- * compare equal.
+ * is true only when both x, y, and z components compare equal.
  *
  * @note Floating-point equality should therefore be used with the usual
  * care associated with exact floating-point comparisons.
  */
 template<typename T>
-struct Vector2 {
+struct Vector3 {
 
     static_assert(
     std::is_floating_point_v<T> ||
     std::is_same_v<T, half_float::half>,
     "Vector3 requires float, double, or half"
 );
+
     /**
      * @brief X component of the vector.
      */
@@ -137,6 +148,11 @@ struct Vector2 {
      */
     T y{};
 
+    /**
+     * @brief Z component of the vector.
+     */
+    T z{};
+
 
     /**
      * @brief Constructs a zero vector.
@@ -144,25 +160,26 @@ struct Vector2 {
      * The components are value-initialised to zero.
      *
      * @code
-     * Vector2f v;
-     * // v == {0.0f, 0.0f}
+     * Vector3f v;
+     * // v == {0.0f, 0.0f, 0.0f}
      * @endcode
      */
-    constexpr Vector2() noexcept = default;
+    constexpr Vector3() noexcept = default;
 
 
     /**
-     * @brief Constructs a vector from two components.
+     * @brief Constructs a vector from three components.
      *
      * @param x The x component.
      * @param y The y component.
+     * @param z The z component.
      *
      * @code
-     * Vector2f v{2.0f, 3.0f};
+     * Vector3f v{2.0f, 3.0f, 4.0f};
      * @endcode
      */
-    constexpr Vector2(T x, T y) noexcept
-        : x{x}, y{y}
+    constexpr Vector3(T x, T y, T z) noexcept
+        : x{x}, y{y}, z{z}
     {}
 
 
@@ -175,14 +192,14 @@ struct Vector2 {
      * @return The component-wise sum.
      *
      * @code
-     * Vector2f a{1.0f, 2.0f};
-     * Vector2f b{3.0f, 4.0f};
+     * Vector3f a{1.0f, 2.0f, 3.0f};
+     * Vector3f b{4.0f, 5.0f, 6.0f};
      *
-     * auto result = a + b; // {4, 6}
+     * auto result = a + b; // {5, 7, 9}
      * @endcode
      */
-    constexpr Vector2 operator+(const Vector2& other) const noexcept {
-        return {x + other.x, y + other.y};
+    constexpr Vector3 operator+(const Vector3& other) const noexcept {
+        return {x + other.x, y + other.y, z + other.z};
     }
 
 
@@ -193,66 +210,66 @@ struct Vector2 {
      * @return The component-wise difference.
      *
      * @code
-     * Vector2f a{5.0f, 7.0f};
-     * Vector2f b{2.0f, 3.0f};
+     * Vector3f a{5.0f, 7.0f, 9.0f};
+     * Vector3f b{2.0f, 3.0f, 4.0f};
      *
-     * auto result = a - b; // {3, 4}
+     * auto result = a - b; // {3, 4, 5}
      * @endcode
      */
-    constexpr Vector2 operator-(const Vector2& other) const noexcept {
-        return {x - other.x, y - other.y};
+    constexpr Vector3 operator-(const Vector3& other) const noexcept {
+        return {x - other.x, y - other.y, z - other.z};
     }
 
 
     /**
-     * @brief Negates both components.
+     * @brief Negates all components.
      *
      * @return A vector pointing in the opposite direction.
      *
      * @code
-     * Vector2f v{2.0f, -3.0f};
-     * auto result = -v; // {-2, 3}
+     * Vector3f v{2.0f, -3.0f, 4.0f};
+     * auto result = -v; // {-2, 3, -4}
      * @endcode
      */
-    constexpr Vector2 operator-() const noexcept {
-        return {-x, -y};
+    constexpr Vector3 operator-() const noexcept {
+        return {-x, -y, -z};
     }
 
 
     /**
-     * @brief Multiplies both components by a scalar.
+     * @brief Multiplies all components by a scalar.
      *
-     * @param scalar Value by which to multiply both components.
+     * @param scalar Value by which to multiply all components.
      * @return The scaled vector.
      *
      * @code
-     * Vector2f v{2.0f, 3.0f};
+     * Vector3f v{2.0f, 3.0f, 4.0f};
      *
-     * auto result = v * 2.0f; // {4, 6}
+     * auto result = v * 2.0f; // {4, 6, 8}
      * @endcode
      */
-    constexpr Vector2 operator*(T scalar) const noexcept {
-        return {x * scalar, y * scalar};
+    constexpr Vector3 operator*(T scalar) const noexcept {
+        return {x * scalar, y * scalar, z * scalar};
     }
 
 
     /**
-     * @brief Divides both components by a scalar.
+     * @brief Divides all components by a scalar.
      *
-     * @param scalar Value by which to divide both components.
+     * @param scalar Value by which to divide all components.
      * @return The scaled vector.
      *
      * @warning Division by zero follows the behaviour of the underlying
      * floating-point type.
      *
      * @code
-     * Vector2f v{4.0f, 6.0f};
+     * Vector3f v{4.0f, 6.0f, 8.0f};
      *
-     * auto result = v / 2.0f; // {2, 3}
+     * auto result = v / 2.0f; // {2, 3, 4}
      * @endcode
      */
-    constexpr Vector2 operator/(T scalar) const noexcept {
-        return {x / scalar, y / scalar};
+    constexpr Vector3 operator/(T scalar) const noexcept {
+        return {x / scalar, y / scalar, z / scalar};
     }
 
 
@@ -264,9 +281,10 @@ struct Vector2 {
      * @param other Vector to add.
      * @return Reference to this vector.
      */
-    constexpr Vector2& operator+=(const Vector2& other) noexcept {
+    constexpr Vector3& operator+=(const Vector3& other) noexcept {
         x += other.x;
         y += other.y;
+        z += other.z;
         return *this;
     }
 
@@ -277,38 +295,41 @@ struct Vector2 {
      * @param other Vector to subtract.
      * @return Reference to this vector.
      */
-    constexpr Vector2& operator-=(const Vector2& other) noexcept {
+    constexpr Vector3& operator-=(const Vector3& other) noexcept {
         x -= other.x;
         y -= other.y;
+        z -= other.z;
         return *this;
     }
 
 
     /**
-     * @brief Multiplies both components by a scalar in place.
+     * @brief Multiplies all components by a scalar in place.
      *
-     * @param scalar Value by which to multiply both components.
+     * @param scalar Value by which to multiply all components.
      * @return Reference to this vector.
      */
-    constexpr Vector2& operator*=(T scalar) noexcept {
+    constexpr Vector3& operator*=(T scalar) noexcept {
         x *= scalar;
         y *= scalar;
+        z *= scalar;
         return *this;
     }
 
 
     /**
-     * @brief Divides both components by a scalar in place.
+     * @brief Divides all components by a scalar in place.
      *
-     * @param scalar Value by which to divide both components.
+     * @param scalar Value by which to divide all components.
      * @return Reference to this vector.
      *
      * @warning Division by zero follows the behaviour of the underlying
      * floating-point type.
      */
-    constexpr Vector2& operator/=(T scalar) noexcept {
+    constexpr Vector3& operator/=(T scalar) noexcept {
         x /= scalar;
         y /= scalar;
+        z /= scalar;
         return *this;
     }
 
@@ -321,50 +342,61 @@ struct Vector2 {
      * The dot product is:
      *
      * @code
-     * x * other.x + y * other.y
+     * x * other.x + y * other.y + z * other.z
      * @endcode
      *
      * @param other Vector to calculate the dot product with.
      * @return The scalar dot product.
      *
      * @code
-     * Vector2f a{1.0f, 2.0f};
-     * Vector2f b{3.0f, 4.0f};
+     * Vector3f a{1.0f, 2.0f, 3.0f};
+     * Vector3f b{4.0f, 5.0f, 6.0f};
      *
-     * float result = a.dot(b); // 11
+     * float result = a.dot(b); // 32
      * @endcode
      */
     [[nodiscard]]
-    constexpr T dot(const Vector2& other) const noexcept {
-        return x * other.x + y * other.y;
+    constexpr T dot(const Vector3& other) const noexcept {
+        return x * other.x + y * other.y + z * other.z;
     }
 
 
     /**
-     * @brief Calculates the two-dimensional cross product.
+     * @brief Calculates the three-dimensional cross product.
      *
-     * In two dimensions the cross product is represented by a scalar:
-     *
-     * @code
-     * x * other.y - y * other.x
-     * @endcode
-     *
-     * The sign of the result indicates the orientation between the two
+     * The cross product produces a vector perpendicular to both input
      * vectors.
      *
-     * @param other Vector to calculate the cross product with.
-     * @return The scalar cross product.
+     * The result is:
      *
      * @code
-     * Vector2f a{1.0f, 0.0f};
-     * Vector2f b{0.0f, 1.0f};
-     *
-     * float result = a.cross(b); // 1
+     * {
+     *     y * other.z - z * other.y,
+     *     z * other.x - x * other.z,
+     *     x * other.y - y * other.x
+     * }
      * @endcode
+     *
+     * @param other Vector to calculate the cross product with.
+     * @return The vector cross product.
+     *
+     * @code
+     * Vector3f a{1.0f, 0.0f, 0.0f};
+     * Vector3f b{0.0f, 1.0f, 0.0f};
+     *
+     * auto result = a.cross(b); // {0, 0, 1}
+     * @endcode
+     *
+     * @note The direction of the resulting vector follows the right-hand
+     * rule.
      */
     [[nodiscard]]
-    constexpr T cross(const Vector2& other) const noexcept {
-        return x * other.y - y * other.x;
+    constexpr Vector3 cross(const Vector3& other) const noexcept {
+        return {
+            y * other.z - z * other.y,
+            z * other.x - x * other.z,
+            x * other.y - y * other.x
+        };
     }
 
 
@@ -374,7 +406,7 @@ struct Vector2 {
      * This is equivalent to:
      *
      * @code
-     * x * x + y * y
+     * x * x + y * y + z * z
      * @endcode
      *
      * Unlike length(), this function does not perform a square-root
@@ -386,14 +418,14 @@ struct Vector2 {
      * @return The squared length of the vector.
      *
      * @code
-     * Vector2f a{3.0f, 4.0f};
+     * Vector3f a{2.0f, 3.0f, 6.0f};
      *
-     * float result = a.lengthSquared(); // 25
+     * float result = a.lengthSquared(); // 49
      * @endcode
      */
     [[nodiscard]]
     constexpr T lengthSquared() const noexcept {
-        return x * x + y * y;
+        return x * x + y * y + z * z;
     }
 
 
@@ -403,15 +435,15 @@ struct Vector2 {
      * The length is calculated as:
      *
      * @code
-     * sqrt(x * x + y * y)
+     * sqrt(x * x + y * y + z * z)
      * @endcode
      *
      * @return The vector's magnitude.
      *
      * @code
-     * Vector2f a{3.0f, 4.0f};
+     * Vector3f a{2.0f, 3.0f, 6.0f};
      *
-     * float result = a.length(); // 5
+     * float result = a.length(); // 7
      * @endcode
      *
      * @note This function performs a square-root operation. If only
@@ -430,15 +462,17 @@ struct Vector2 {
     /**
      * @brief Compares two vectors for exact equality.
      *
-     * Both x and y components must compare equal.
+     * All three components must compare equal.
      *
      * No tolerance or epsilon is used.
      *
      * @param other Vector to compare with.
-     * @return true if both components are equal; otherwise false.
+     * @return true if all components are equal; otherwise false.
      */
-    constexpr bool operator==(const Vector2& other) const noexcept {
-        return x == other.x && y == other.y;
+    constexpr bool operator==(const Vector3& other) const noexcept {
+        return x == other.x &&
+               y == other.y &&
+               z == other.z;
     }
 
 
@@ -454,7 +488,7 @@ struct Vector2 {
      * @param other Vector to compare with.
      * @return true if the vectors are not equal; otherwise false.
      */
-    constexpr bool operator!=(const Vector2& other) const noexcept {
+    constexpr bool operator!=(const Vector3& other) const noexcept {
         return !(*this == other);
     }
 };
@@ -467,14 +501,14 @@ struct Vector2 {
  *
  * Provides scalar multiplication with the scalar on the left-hand side.
  *
- * @param scalar Value by which to multiply both components.
+ * @param scalar Value by which to multiply all components.
  * @param vector Vector to scale.
  * @return The scaled vector.
  *
  * @code
- * Vector2f v{2.0f, 3.0f};
+ * Vector3f v{2.0f, 3.0f, 4.0f};
  *
- * auto result = 2.0f * v; // {4, 6}
+ * auto result = 2.0f * v; // {4, 6, 8}
  * @endcode
  *
  * This is equivalent to:
@@ -484,9 +518,9 @@ struct Vector2 {
  * @endcode
  */
 template<typename T>
-constexpr Vector2<T> operator*(
+constexpr Vector3<T> operator*(
     T scalar,
-    const Vector2<T>& vector
+    const Vector3<T>& vector
 ) noexcept {
     return vector * scalar;
 }
@@ -495,35 +529,35 @@ constexpr Vector2<T> operator*(
 // ---------- Type aliases ----------
 
 /**
- * @brief Two-dimensional vector using half-precision floating-point values.
+ * @brief Three-dimensional vector using half-precision floating-point values.
  *
  * The half-precision implementation is provided by the external
  * half-therock library.
  *
- * @see Vector2
+ * @see Vector3
  */
-using Vector2h = Vector2<half_float::half>;
+using Vector3h = Vector3<half_float::half>;
 
 
 /**
- * @brief Two-dimensional vector using single-precision floating-point values.
+ * @brief Three-dimensional vector using single-precision floating-point values.
  *
- * This is an alias for Vector2<float>.
+ * This is an alias for Vector3<float>.
  *
- * @see Vector2
+ * @see Vector3
  */
-using Vector2f = Vector2<float>;
+using Vector3f = Vector3<float>;
 
 
 /**
- * @brief Two-dimensional vector using double-precision floating-point values.
+ * @brief Three-dimensional vector using double-precision floating-point values.
  *
- * This is an alias for Vector2<double>.
+ * This is an alias for Vector3<double>.
  *
- * @see Vector2
+ * @see Vector3
  */
-using Vector2d = Vector2<double>;
+using Vector3d = Vector3<double>;
 
 } // namespace bml
 
-#endif // BML_VECTOR2_HPP
+#endif // BML_VECTOR3_HPP
