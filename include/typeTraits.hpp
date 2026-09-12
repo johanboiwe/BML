@@ -3,6 +3,10 @@
 
 #include <cstdint>
 #include <type_traits>
+#include <half.hpp>
+
+#include "vector2.hpp"
+#include "vector3.hpp"
 
 /**
  * @file typeTraits.hpp
@@ -18,9 +22,10 @@
  *
  * These traits are mainly intended for use inside BML, but are documented
  * because advanced users may rely on them when extending the library.
-
+ *
  */
 /// @cond INTERNAL
+
 /**
  * @brief Trait that defines the underlying storage type used by BML for a given element type `U`.
  *
@@ -73,28 +78,49 @@ using storage_of_t = typename storage_of<U>::type;
  *        operators in BML (e.g. +, -, *, /, etc.).
  *
  * Rules:
- * - true for all arithmetic types except:
+ * - true for all built-in arithmetic types except:
  *   - plain `char`
  *   - `bool`
+ * - true for `half_float::half`, the half-precision floating-point type
+ *   provided by the Half-therock library.
  *
  * This means:
- *   - `int`, `unsigned`, `float`, `double`, `signed char`, `unsigned char` => allowed
+ *   - `int`, `unsigned`, `float`, `double`, `long double`,
+ *     `signed char`, and `unsigned char` => allowed
+ *   - `half_float::half` => allowed
  *   - `char` (the plain character type) => not allowed
  *   - `bool` => not allowed
  *
- * @tparam X candidate element type
+ * `half_float::half` is explicitly supported because it is not one of the
+ * built-in C++ arithmetic types and therefore does not satisfy
+ * `std::is_arithmetic`.
+ *
+ * @tparam X Candidate element type.
  *
  * @note
  * Used with `std::enable_if_t<bml_is_math_arithmetic<T>::value, ...>` to make
- * certain operator overloads only appear for numeric-ish types and not for
- * logical or textual types.
+ * certain operator overloads only appear for numeric types supported by BML.
  */
 template <typename X>
 struct bml_is_math_arithmetic
     : std::bool_constant<
-        std::is_arithmetic<X>::value &&
-        !std::is_same<typename std::remove_cv<X>::type, char>::value &&
-        !std::is_same<typename std::remove_cv<X>::type, bool>::value>
+        (
+            std::is_arithmetic_v<X> ||
+            std::is_same_v<std::remove_cv_t<X>, half_float::half>
+        ) &&
+        !std::is_same_v<std::remove_cv_t<X>, char> &&
+        !std::is_same_v<std::remove_cv_t<X>, bool>
+    >
+{
+};
+
+template <typename T>
+struct bml_is_math_arithmetic<bml::Vector2<T>> : std::true_type
+{
+};
+
+template <typename T>
+struct bml_is_math_arithmetic<bml::Vector3<T>> : std::true_type
 {
 };
 
@@ -150,5 +176,6 @@ template <typename X>
 struct bml_is_bool : std::is_same<typename std::remove_cv<X>::type, bool>
 {
 };
+
 /// @endcond
 #endif // BML_TYPETRAITS_HPP

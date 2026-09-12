@@ -1,8 +1,7 @@
 #ifndef BML_MATRIX_HPP
 #define BML_MATRIX_HPP
-
-#include "export.hpp"
 #include "typeTraits.hpp"
+#include "export.hpp"
 #include "rowView.hpp"
 #include "traversal.hpp"
 
@@ -224,6 +223,7 @@ namespace bml
          * @param byteStream uint8_t (char)* bytestream
          * @param byteSize size_t length of byte stream
          * @note std::string and Json is deserialised using @see StringStorage
+         * Note: Serialisation and deserialisation use the host architecture's native endianness. The size and representation of float are platform-dependent.
          */
         void initFromByteStream(const std::uint8_t* byteStream, size_t byteSize);
 
@@ -232,6 +232,7 @@ namespace bml
          * @see bml::matrix::initFromByteStream
          * @param byteStream std::vector<uint8_t>
          * @note std::string and Json is deserialised using @see StringStorage
+         * Note: Serialisation and deserialisation use the host architecture's native endianness. The size and representation of float are platform-dependent.
          */
         void initFromByteStream(const std::vector<uint8_t>& byteStream);
 
@@ -240,6 +241,7 @@ namespace bml
          * @brief Serialises the values of the matrix into a bytestream.
          * @note std::string and Json is serialised using @see StringStorage
          * @return a bytestream of the matrix inside a vector
+         * Note: Serialisation and deserialisation use the host architecture's native endianness. The size and representation of float are platform-dependent.
          */
         [[nodiscard]] std::vector<std::uint8_t> toByteStream() const;
 

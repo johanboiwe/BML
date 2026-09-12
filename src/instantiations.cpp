@@ -17,6 +17,7 @@
 #include "rowView.cpp"
 #include "boolRef.cpp"
 #include "stringStorage.cpp"
+#include <half.hpp>
 
 
 namespace bml
@@ -43,7 +44,16 @@ namespace bml
 #define BML_FLOAT_TYPES(X) \
     X(float)               \
     X(double)              \
-    X(long double)
+    X(long double)          \
+    X(half_float::half)
+
+#define BML_VECTOR_TYPES(X) \
+X(bml::Vector2h)                 \
+X(bml::Vector2f)                \
+X(bml::Vector2d)\
+X(bml::Vector3h)                 \
+X(bml::Vector3f)                \
+X(bml::Vector3d)\
 
 #define BML_CHARLIKE_TYPES(X) \
     X(char)
@@ -67,6 +77,7 @@ X(Json)
 #define X(T) template class Matrix<T>;
     BML_INTEGRAL_MATH_TYPES(X)
     BML_FLOAT_TYPES(X)
+    BML_VECTOR_TYPES(X)
     BML_CHARLIKE_TYPES(X)
     BML_BOOL_TYPES(X)
     BML_SPECIAL_TYPES(X)
@@ -76,6 +87,7 @@ X(Json)
 #define X(T) template class MatrixIterator<T>; template class ConstMatrixIterator<T>;
     BML_INTEGRAL_MATH_TYPES(X)
     BML_FLOAT_TYPES(X)
+    BML_VECTOR_TYPES(X)
     BML_CHARLIKE_TYPES(X)
     BML_BOOL_TYPES(X)
     BML_SPECIAL_TYPES(X)
@@ -84,10 +96,11 @@ X(Json)
     // RowView (+ const)
     // NOTE: if rowView.hpp defines explicit specialisations for bool,
     // explicitly instantiate those specialisations directly to avoid
-    // -Winstantiation-after-specialization.
+    // -Winstantiation-after-specialisation.
 #define X(T) template class RowView<T>; template class RowView<const T>;
     BML_INTEGRAL_MATH_TYPES(X)
     BML_FLOAT_TYPES(X)
+    BML_VECTOR_TYPES(X)
     BML_CHARLIKE_TYPES(X)
     /* no BML_BOOL_TYPES(X) here (bool handled below) */
     BML_SPECIAL_TYPES(X)
@@ -192,6 +205,15 @@ X(Json)
     INSTANTIATE_ARITH(float)          INSTANTIATE_REDUCTIONS(float)
     INSTANTIATE_ARITH(double)         INSTANTIATE_REDUCTIONS(double)
     INSTANTIATE_ARITH(long double)    INSTANTIATE_REDUCTIONS(long double)
+    INSTANTIATE_ARITH(half_float::half)    INSTANTIATE_REDUCTIONS(half_float::half)
+    INSTANTIATE_ARITH(Vector2<float>)
+INSTANTIATE_ARITH(Vector2<double>)
+INSTANTIATE_ARITH(Vector2<half_float::half>)
+
+INSTANTIATE_ARITH(Vector3<float>)
+INSTANTIATE_ARITH(Vector3<double>)
+INSTANTIATE_ARITH(Vector3<half_float::half>)
+
 
     INSTANTIATE_INT_ONLY(std::int8_t)
     INSTANTIATE_INT_ONLY(std::uint8_t)
@@ -237,6 +259,7 @@ template BML_API bool operator>=<T>(const Matrix<T>&, const Matrix<T>&);
     BML_CHARLIKE_TYPES(X)
     BML_BOOL_TYPES(X)
     BML_SPECIAL_TYPES(X)
+    BML_VECTOR_TYPES(X)
 #undef X
 
 

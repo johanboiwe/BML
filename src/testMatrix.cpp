@@ -14,6 +14,8 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <vector3.hpp>
+#include <vector2.hpp>
 namespace bml { int testMatrix(); }//forward declaration
 int main() {
     return bml::testMatrix();  // 0 = success, 1 = failure (as your test harness does)
@@ -65,6 +67,15 @@ const char* type_name() {
     if constexpr (std::is_same_v<T, bool>)          return "bool";
     if constexpr (std::is_same_v<T, std::string>)   return "std::string";
     if constexpr (std::is_same_v<T, void*>)         return "void*";
+    if constexpr (std::is_same_v<T, half_float::half>)    return "half";
+    if constexpr (std::is_same_v<T, nlohmann::json>)    return "JSON";
+    if constexpr (std::is_same_v<T, bml::Vector2<float>>) return "Vector2<float>";
+    if constexpr (std::is_same_v<T, bml::Vector2<double>>) return "Vector2<double>";
+    if constexpr (std::is_same_v<T, bml::Vector2<half_float::half>>) return "Vector2<half>";
+
+    if constexpr (std::is_same_v<T, bml::Vector3<float>>) return "Vector3<float>";
+    if constexpr (std::is_same_v<T, bml::Vector3<double>>) return "Vector3<double>";
+    if constexpr (std::is_same_v<T, bml::Vector3<half_float::half>>) return "Vector3<half>";
     return "unknown";
 }
 
@@ -239,6 +250,163 @@ void test_arithmetic_verbose() {
     d /= a; expect_eq(d[0][1], static_cast<T>(6),  "/=");
     LOG("[OK] Arithmetic");
 }
+
+
+template<typename T>
+void test_vector2_arithmetic_verbose() {
+    if constexpr (!is_math<T>::value) return;
+
+    using V = bml::Vector2<T>;
+
+    print_type_header<V>("Vector2 Arithmetic");
+
+    V a{static_cast<T>(1), static_cast<T>(2)};
+    V b{static_cast<T>(3), static_cast<T>(4)};
+
+    auto c = a + b;
+    expect_eq(c.x, static_cast<T>(4), "a+b x");
+    expect_eq(c.y, static_cast<T>(6), "a+b y");
+
+    c = a - b;
+    expect_eq(c.x, static_cast<T>(-2), "a-b x");
+    expect_eq(c.y, static_cast<T>(-2), "a-b y");
+
+    c = a * b;
+    expect_eq(c.x, static_cast<T>(3), "a*b x");
+    expect_eq(c.y, static_cast<T>(8), "a*b y");
+
+    c = a / b;
+    expect_eq(c.x, static_cast<T>(1) / static_cast<T>(3), "a/b x");
+    expect_eq(c.y, static_cast<T>(1) / static_cast<T>(2), "a/b y");
+
+    c = a + static_cast<T>(10);
+    expect_eq(c.x, static_cast<T>(11), "a+10 x");
+    expect_eq(c.y, static_cast<T>(12), "a+10 y");
+
+    c = a * static_cast<T>(2);
+    expect_eq(c.x, static_cast<T>(2), "a*2 x");
+    expect_eq(c.y, static_cast<T>(4), "a*2 y");
+
+    c = a / static_cast<T>(2);
+    expect_eq(c.x, static_cast<T>(0.5), "a/2 x");
+    expect_eq(c.y, static_cast<T>(1), "a/2 y");
+
+    expect_eq(a.dot(b), static_cast<T>(11), "dot");
+    expect_eq(a.cross(b), static_cast<T>(-2), "cross");
+    expect_eq(a.lengthSquared(), static_cast<T>(5), "lengthSquared");
+
+    V d = a;
+
+    d += b;
+    expect_eq(d.x, static_cast<T>(4), "+= x");
+    expect_eq(d.y, static_cast<T>(6), "+= y");
+
+    d -= b;
+    expect_eq(d.x, static_cast<T>(1), "-= x");
+    expect_eq(d.y, static_cast<T>(2), "-= y");
+
+    d *= b;
+    expect_eq(d.x, static_cast<T>(3), "*= x");
+    expect_eq(d.y, static_cast<T>(8), "*= y");
+
+    d /= b;
+    expect_eq(d.x, static_cast<T>(1), "/= x");
+    expect_eq(d.y, static_cast<T>(2), "/= y");
+
+    expect_true(!a.isZero(), "isZero false");
+    expect_true(V{}.isZero(), "isZero true");
+
+    expect_true(a == a, "==");
+    expect_true(a != b, "!=");
+
+    LOG("[OK] Vector2 Arithmetic");
+}
+
+template<typename T>
+void test_vector3_arithmetic_verbose() {
+    if constexpr (!is_math<T>::value) return;
+
+    using V = bml::Vector3<T>;
+
+    print_type_header<V>("Vector3 Arithmetic");
+
+    V a{static_cast<T>(1), static_cast<T>(2), static_cast<T>(3)};
+    V b{static_cast<T>(4), static_cast<T>(5), static_cast<T>(6)};
+
+    auto c = a + b;
+    expect_eq(c.x, static_cast<T>(5), "a+b x");
+    expect_eq(c.y, static_cast<T>(7), "a+b y");
+    expect_eq(c.z, static_cast<T>(9), "a+b z");
+
+    c = a - b;
+    expect_eq(c.x, static_cast<T>(-3), "a-b x");
+    expect_eq(c.y, static_cast<T>(-3), "a-b y");
+    expect_eq(c.z, static_cast<T>(-3), "a-b z");
+
+    c = a * b;
+    expect_eq(c.x, static_cast<T>(4), "a*b x");
+    expect_eq(c.y, static_cast<T>(10), "a*b y");
+    expect_eq(c.z, static_cast<T>(18), "a*b z");
+
+    c = a / b;
+    expect_eq(c.x, static_cast<T>(1) / static_cast<T>(4), "a/b x");
+    expect_eq(c.y, static_cast<T>(2) / static_cast<T>(5), "a/b y");
+    expect_eq(c.z, static_cast<T>(3) / static_cast<T>(6), "a/b z");
+
+    c = a + static_cast<T>(10);
+    expect_eq(c.x, static_cast<T>(11), "a+10 x");
+    expect_eq(c.y, static_cast<T>(12), "a+10 y");
+    expect_eq(c.z, static_cast<T>(13), "a+10 z");
+
+    c = a * static_cast<T>(2);
+    expect_eq(c.x, static_cast<T>(2), "a*2 x");
+    expect_eq(c.y, static_cast<T>(4), "a*2 y");
+    expect_eq(c.z, static_cast<T>(6), "a*2 z");
+
+    c = a / static_cast<T>(2);
+    expect_eq(c.x, static_cast<T>(0.5), "a/2 x");
+    expect_eq(c.y, static_cast<T>(1), "a/2 y");
+    expect_eq(c.z, static_cast<T>(1.5), "a/2 z");
+
+    expect_eq(a.dot(b), static_cast<T>(32), "dot");
+    expect_eq(a.lengthSquared(), static_cast<T>(14), "lengthSquared");
+
+    const V cross = a.cross(b);
+    expect_eq(cross.x, static_cast<T>(-3), "cross x");
+    expect_eq(cross.y, static_cast<T>(6), "cross y");
+    expect_eq(cross.z, static_cast<T>(-3), "cross z");
+
+    V d = a;
+
+    d += b;
+    expect_eq(d.x, static_cast<T>(5), "+= x");
+    expect_eq(d.y, static_cast<T>(7), "+= y");
+    expect_eq(d.z, static_cast<T>(9), "+= z");
+
+    d -= b;
+    expect_eq(d.x, static_cast<T>(1), "-= x");
+    expect_eq(d.y, static_cast<T>(2), "-= y");
+    expect_eq(d.z, static_cast<T>(3), "-= z");
+
+    d *= b;
+    expect_eq(d.x, static_cast<T>(4), "*= x");
+    expect_eq(d.y, static_cast<T>(10), "*= y");
+    expect_eq(d.z, static_cast<T>(18), "*= z");
+
+    d /= b;
+    expect_eq(d.x, static_cast<T>(1), "/= x");
+    expect_eq(d.y, static_cast<T>(2), "/= y");
+    expect_eq(d.z, static_cast<T>(3), "/= z");
+
+    expect_true(!a.isZero(), "isZero false");
+    expect_true(V{}.isZero(), "isZero true");
+
+    expect_true(a == a, "==");
+    expect_true(a != b, "!=");
+
+    LOG("[OK] Vector3 Arithmetic");
+}
+
 
 template<typename T>
 void test_integral_ops_verbose() {
@@ -1199,6 +1367,7 @@ int testMatrix() {
         CALL_CORE_AND_POD(float)
         CALL_CORE_AND_POD(double)
         CALL_CORE_AND_POD(long double)
+        CALL_CORE_AND_POD(half_float::half)
         CALL_CORE_AND_POD(char)
         #undef CALL_CORE_AND_POD
 
@@ -1238,6 +1407,14 @@ int testMatrix() {
         test_arithmetic_verbose<float>();
         test_arithmetic_verbose<double>();
         test_arithmetic_verbose<long double>();
+        test_arithmetic_verbose<half_float::half>();
+        test_vector2_arithmetic_verbose<half_float::half>();
+        test_vector2_arithmetic_verbose<float>();
+        test_vector2_arithmetic_verbose<double>();
+
+        test_vector3_arithmetic_verbose<half_float::half>();
+        test_vector3_arithmetic_verbose<float>();
+        test_vector3_arithmetic_verbose<double>();
 
         // Integral-only ops
         test_integral_ops_verbose<std::int8_t>();

@@ -5,9 +5,23 @@
 #include <sstream>
 #include <stdexcept>
 #include <cstdint>
+template<typename T>
+constexpr bool bml_is_zero(const T& value) noexcept
+{
+    return value == T{};
+}
 
+template<typename T>
+constexpr bool bml_is_zero(const bml::Vector2<T>& value) noexcept
+{
+    return value.isZero();
+}
 
-
+template<typename T>
+constexpr bool bml_is_zero(const bml::Vector3<T>& value) noexcept
+{
+    return value.isZero();
+}
 namespace bml
 {
     template<typename T>
@@ -782,7 +796,7 @@ void Matrix<Json>::initFromByteStream(const uint8_t* byteStream, size_t byteSize
         Matrix<T> result(rows, cols);
         for(size_t i = 0; i < data.size(); i++)
         {
-            if (other.data.data()[i] == 0)
+            if (bml_is_zero(other.data.data()[i]))
                 throw std::runtime_error("Division by zero encountered.");
             result.data.data()[i] = data.data()[i] / other.data.data()[i];
         }
@@ -857,7 +871,7 @@ void Matrix<Json>::initFromByteStream(const uint8_t* byteStream, size_t byteSize
     typename std::enable_if<bml_is_math_arithmetic<U>::value, Matrix<T>>::type
             Matrix<T>::operator/(const T& scalar) const
     {
-        if (scalar == 0)
+        if (bml_is_zero(scalar))
             throw std::runtime_error("Division by zero encountered.");
 
         Matrix<T> result(rows, cols);
@@ -1146,7 +1160,8 @@ void Matrix<Json>::initFromByteStream(const uint8_t* byteStream, size_t byteSize
             throw std::invalid_argument("Matrix dimensions must match.");
         for(size_t i = 0; i < data.size(); i++)
         {
-            if (other.data[i] == 0) throw std::runtime_error("Division by zero encountered.");
+            if (bml_is_zero(other.data[i]))
+                throw std::runtime_error("Division by zero encountered.");
             data[i] /= other.data[i];
         }
         return *this;
@@ -1204,7 +1219,7 @@ void Matrix<Json>::initFromByteStream(const uint8_t* byteStream, size_t byteSize
     std::enable_if_t<bml_is_math_arithmetic<U>::value, Matrix<T>&>
     Matrix<T>::operator/=(const T& s)
     {
-        if (s == 0)
+        if (bml_is_zero(s))
             throw std::runtime_error("Division by zero encountered.");
         for(size_t i = 0; i < data.size(); i++)
         {
