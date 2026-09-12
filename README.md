@@ -31,12 +31,14 @@ BML supports the following data types:
 * float
 * double
 * long double
+* half precision float (from the Half-Therock library)
 * char
 * bool
 * std::string
 * Json
 * void* — generic pointers for storing references to arbitrary objects
 
+Note: Serialisation and deserialisation use the host architecture's native endianness. The size and representation of float are platform-dependent.
 ## Installation
 
 See the [installation guide](INSTALL.md) for more thorough instructions.
