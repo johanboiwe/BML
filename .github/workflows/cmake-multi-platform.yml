@@ -1,8 +1,17 @@
 name: CMake on multiple platforms
 
 on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Git branch to build"
+        required: true
+        default: "master"
+        type: string
+
   push:
     branches: ["master"]
+
   pull_request:
     branches: ["master"]
 
@@ -40,8 +49,10 @@ jobs:
             cpp_compiler: cl
 
     steps:
-      - name: Checkout
+      - name: Checkout selected branch
         uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Configure CMake
         run: >
