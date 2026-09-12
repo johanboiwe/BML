@@ -37,6 +37,7 @@
 #include "stringStorage.hpp"   // StringStorage helper for Matrix<std::string>
 #include "json.hpp"             // for the JSON implementation
 #include "vector2.hpp" //for 2d vectors
+#include "vector3.hpp" //for 3d vectors
 #include "half.hpp"
 
 
