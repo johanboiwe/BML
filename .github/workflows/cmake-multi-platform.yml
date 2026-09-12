@@ -1,7 +1,13 @@
 name: CMake on multiple platforms
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to build"
+        required: true
+        default: "master"
+        type: string
   push:
     branches: ["master"]
   pull_request:
