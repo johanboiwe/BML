@@ -2,7 +2,9 @@
 #define BML_VECTOR2_HPP
 
 #include <cmath>
+#include <ostream>
 #include <type_traits>
+
 #include <half.hpp>
 
 namespace bml {
@@ -24,28 +26,37 @@ namespace bml {
  *
  * @tparam T The floating-point type used for both components.
  *
- * @note T must be a type recognised by std::is_floating_point_v.
+ * @note T must be float, double, or half_float::half.
  *
  * @par Arithmetic
  *
- * Vector2 supports the usual vector arithmetic operations:
+ * Vector2 supports component-wise vector arithmetic and scalar arithmetic:
  *
  * @code
  * Vector2f a{2.0f, 3.0f};
  * Vector2f b{4.0f, 5.0f};
  *
- * auto sum  = a + b;       // {6, 8}
- * auto diff = a - b;       // {-2, -2}
- * auto neg  = -a;          // {-2, -3}
+ * auto sum        = a + b;       // {6, 8}
+ * auto diff       = a - b;       // {-2, -2}
+ * auto neg        = -a;          // {-2, -3}
+ * auto multiplied = a * b;       // {8, 15}
+ * auto divided    = b / a;       // {2, 1.66667}
  *
- * auto scaled = a * 2.0f;  // {4, 6}
- * auto divided = a / 2.0f; // {1, 1.5}
+ * auto added      = a + 2.0f;    // {4, 5}
+ * auto subtracted = a - 2.0f;    // {0, 1}
+ * auto scaled     = a * 2.0f;    // {4, 6}
+ * auto scalarDiv  = a / 2.0f;    // {1, 1.5}
  * @endcode
+ *
+ * Vector multiplication and division are component-wise. They do not
+ * calculate a dot product.
+ *
+ * @par Scalar multiplication
  *
  * Scalar multiplication is commutative:
  *
  * @code
- * auto a = Vector2f{2.0f, 3.0f};
+ * Vector2f a{2.0f, 3.0f};
  *
  * auto b = a * 2.0f;
  * auto c = 2.0f * a;
@@ -70,9 +81,8 @@ namespace bml {
  * float result = a.dot(b); // 11
  * @endcode
  *
- * The dot product is useful for determining the relationship between
- * directions, including whether vectors point generally in the same or
- * opposite directions and whether they are perpendicular.
+ * The dot product is deliberately provided as dot() rather than
+ * operator* because operator* performs component-wise multiplication.
  *
  * @par 2D cross product
  *
@@ -123,10 +133,11 @@ template<typename T>
 struct Vector2 {
 
     static_assert(
-    std::is_floating_point_v<T> ||
-    std::is_same_v<T, half_float::half>,
-    "Vector3 requires float, double, or half"
-);
+        std::is_floating_point_v<T> ||
+        std::is_same_v<T, half_float::half>,
+        "Vector2 requires float, double, or half"
+    );
+
     /**
      * @brief X component of the vector.
      */
@@ -169,7 +180,7 @@ struct Vector2 {
     // ---------- Arithmetic ----------
 
     /**
-     * @brief Adds two vectors.
+     * @brief Adds two vectors component-wise.
      *
      * @param other Vector to add.
      * @return The component-wise sum.
@@ -187,7 +198,24 @@ struct Vector2 {
 
 
     /**
-     * @brief Subtracts one vector from another.
+     * @brief Adds a scalar to every component.
+     *
+     * @param scalar Value added to x and y.
+     * @return The vector with the scalar added component-wise.
+     *
+     * @code
+     * Vector2f v{2.0f, 3.0f};
+     *
+     * auto result = v + 2.0f; // {4, 5}
+     * @endcode
+     */
+    constexpr Vector2 operator+(T scalar) const noexcept {
+        return {x + scalar, y + scalar};
+    }
+
+
+    /**
+     * @brief Subtracts two vectors component-wise.
      *
      * @param other Vector to subtract.
      * @return The component-wise difference.
@@ -201,6 +229,23 @@ struct Vector2 {
      */
     constexpr Vector2 operator-(const Vector2& other) const noexcept {
         return {x - other.x, y - other.y};
+    }
+
+
+    /**
+     * @brief Subtracts a scalar from every component.
+     *
+     * @param scalar Value subtracted from x and y.
+     * @return The vector with the scalar subtracted component-wise.
+     *
+     * @code
+     * Vector2f v{2.0f, 3.0f};
+     *
+     * auto result = v - 2.0f; // {0, 1}
+     * @endcode
+     */
+    constexpr Vector2 operator-(T scalar) const noexcept {
+        return {x - scalar, y - scalar};
     }
 
 
@@ -220,6 +265,30 @@ struct Vector2 {
 
 
     /**
+     * @brief Multiplies two vectors component-wise.
+     *
+     * This is not a dot product. Each component is multiplied
+     * independently.
+     *
+     * @param other Vector whose components are multiplied with this vector.
+     * @return The component-wise product.
+     *
+     * @code
+     * Vector2f a{2.0f, 1.0f};
+     * Vector2f b{2.0f, 2.0f};
+     *
+     * auto result = a * b; // {4, 2}
+     * @endcode
+     */
+    constexpr Vector2 operator*(const Vector2& other) const noexcept {
+        return {
+            x * other.x,
+            y * other.y
+        };
+    }
+
+
+    /**
      * @brief Multiplies both components by a scalar.
      *
      * @param scalar Value by which to multiply both components.
@@ -233,6 +302,30 @@ struct Vector2 {
      */
     constexpr Vector2 operator*(T scalar) const noexcept {
         return {x * scalar, y * scalar};
+    }
+
+
+    /**
+     * @brief Divides two vectors component-wise.
+     *
+     * @param other Vector whose components are used as divisors.
+     * @return The component-wise quotient.
+     *
+     * @warning Division by zero follows the behaviour of the underlying
+     * floating-point type.
+     *
+     * @code
+     * Vector2f a{4.0f, 6.0f};
+     * Vector2f b{2.0f, 2.0f};
+     *
+     * auto result = a / b; // {2, 3}
+     * @endcode
+     */
+    constexpr Vector2 operator/(const Vector2& other) const noexcept {
+        return {
+            x / other.x,
+            y / other.y
+        };
     }
 
 
@@ -259,7 +352,7 @@ struct Vector2 {
     // ---------- Compound assignment ----------
 
     /**
-     * @brief Adds another vector to this vector.
+     * @brief Adds another vector to this vector component-wise.
      *
      * @param other Vector to add.
      * @return Reference to this vector.
@@ -272,7 +365,26 @@ struct Vector2 {
 
 
     /**
-     * @brief Subtracts another vector from this vector.
+     * @brief Adds a scalar to every component in place.
+     *
+     * @param scalar Value added to x and y.
+     * @return Reference to this vector.
+     *
+     * @code
+     * Vector2f v{2.0f, 3.0f};
+     *
+     * v += 2.0f; // {4, 5}
+     * @endcode
+     */
+    constexpr Vector2& operator+=(T scalar) noexcept {
+        x += scalar;
+        y += scalar;
+        return *this;
+    }
+
+
+    /**
+     * @brief Subtracts another vector from this vector component-wise.
      *
      * @param other Vector to subtract.
      * @return Reference to this vector.
@@ -280,6 +392,45 @@ struct Vector2 {
     constexpr Vector2& operator-=(const Vector2& other) noexcept {
         x -= other.x;
         y -= other.y;
+        return *this;
+    }
+
+
+    /**
+     * @brief Subtracts a scalar from every component in place.
+     *
+     * @param scalar Value subtracted from x and y.
+     * @return Reference to this vector.
+     *
+     * @code
+     * Vector2f v{2.0f, 3.0f};
+     *
+     * v -= 2.0f; // {0, 1}
+     * @endcode
+     */
+    constexpr Vector2& operator-=(T scalar) noexcept {
+        x -= scalar;
+        y -= scalar;
+        return *this;
+    }
+
+
+    /**
+     * @brief Multiplies this vector by another vector component-wise.
+     *
+     * @param other Vector whose components are multiplied with this vector.
+     * @return Reference to this vector.
+     *
+     * @code
+     * Vector2f a{2.0f, 1.0f};
+     * Vector2f b{2.0f, 2.0f};
+     *
+     * a *= b; // {4, 2}
+     * @endcode
+     */
+    constexpr Vector2& operator*=(const Vector2& other) noexcept {
+        x *= other.x;
+        y *= other.y;
         return *this;
     }
 
@@ -293,6 +444,22 @@ struct Vector2 {
     constexpr Vector2& operator*=(T scalar) noexcept {
         x *= scalar;
         y *= scalar;
+        return *this;
+    }
+
+
+    /**
+     * @brief Divides this vector by another vector component-wise.
+     *
+     * @param other Vector whose components are used as divisors.
+     * @return Reference to this vector.
+     *
+     * @warning Division by zero follows the behaviour of the underlying
+     * floating-point type.
+     */
+    constexpr Vector2& operator/=(const Vector2& other) noexcept {
+        x /= other.x;
+        y /= other.y;
         return *this;
     }
 
@@ -428,6 +595,17 @@ struct Vector2 {
     // ---------- Comparison ----------
 
     /**
+     * @brief Checks whether both components are zero.
+     *
+     * @return true if both x and y are zero; otherwise false.
+     */
+    [[nodiscard]]
+    constexpr bool isZero() const noexcept {
+        return x == T{} && y == T{};
+    }
+
+
+    /**
      * @brief Compares two vectors for exact equality.
      *
      * Both x and y components must compare equal.
@@ -458,6 +636,38 @@ struct Vector2 {
         return !(*this == other);
     }
 };
+
+
+// ---------- Stream output ----------
+
+/**
+ * @brief Writes a Vector2 to an output stream.
+ *
+ * The vector is formatted as:
+ *
+ * @code
+ * {x, y}
+ * @endcode
+ *
+ * @param os Output stream.
+ * @param vector Vector to write.
+ * @return Reference to the output stream.
+ *
+ * @code
+ * Vector2f v{1.0f, 2.0f};
+ * std::cout << v; // {1, 2}
+ * @endcode
+ */
+template<typename T>
+std::ostream& operator<<(
+    std::ostream& os,
+    const Vector2<T>& vector
+) {
+    return os << '{'
+              << vector.x << ", "
+              << vector.y
+              << '}';
+}
 
 
 // ---------- Scalar multiplication ----------
@@ -497,8 +707,7 @@ constexpr Vector2<T> operator*(
 /**
  * @brief Two-dimensional vector using half-precision floating-point values.
  *
- * The half-precision implementation is provided by the external
- * half-therock library.
+ * The half-precision implementation is provided by the half library.
  *
  * @see Vector2
  */
