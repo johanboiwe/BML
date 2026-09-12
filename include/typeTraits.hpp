@@ -5,6 +5,9 @@
 #include <type_traits>
 #include <half.hpp>
 
+#include "vector2.hpp"
+#include "vector3.hpp"
+
 /**
  * @file typeTraits.hpp
  * @brief Internal type traits used by BML for storage layout and operator enablement.
@@ -102,14 +105,22 @@ template <typename X>
 struct bml_is_math_arithmetic
     : std::bool_constant<
         (
-            std::is_arithmetic<X>::value ||
-            std::is_same<
-                typename std::remove_cv<X>::type,
-                half_float::half
-            >::value
+            std::is_arithmetic_v<X> ||
+            std::is_same_v<std::remove_cv_t<X>, half_float::half>
         ) &&
-        !std::is_same<typename std::remove_cv<X>::type, char>::value &&
-        !std::is_same<typename std::remove_cv<X>::type, bool>::value>
+        !std::is_same_v<std::remove_cv_t<X>, char> &&
+        !std::is_same_v<std::remove_cv_t<X>, bool>
+    >
+{
+};
+
+template <typename T>
+struct bml_is_math_arithmetic<bml::Vector2<T>> : std::true_type
+{
+};
+
+template <typename T>
+struct bml_is_math_arithmetic<bml::Vector3<T>> : std::true_type
 {
 };
 
