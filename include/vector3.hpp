@@ -8,7 +8,6 @@
 #include <half.hpp>
 
 namespace bml {
-
 /**
  * @brief A three-dimensional vector with floating-point components.
  *
@@ -28,11 +27,27 @@ namespace bml {
  *
  * @note T must be float, double, or half_float::half.
  *
+ * @par Special member functions
+ *
+ * Vector3 explicitly defaults all five special member functions.
+ * Copy and move operations perform member-wise operations on the vector
+ * components. Vector3 does not own or manage any external resources.
+ *
+ * @code
+ * Vector3f a{1.0f, 2.0f, 3.0f};
+ * Vector3f b = a;            // copy construction
+ * Vector3f c = std::move(a); // move construction
+ *
+ * b = c;                     // copy assignment
+ * b = std::move(c);          // move assignment
+ * @endcode
+ *
+ * The explicitly defaulted special member functions provide the normal
+ * value-type semantics expected of a vector.
+ *
  * @par Arithmetic
  *
- * Vector3 supports component-wise vector arithmetic and scalar arithmetic.
- *
- * Vector-to-vector operations are performed component-wise:
+ * Vector3 supports component-wise vector arithmetic and scalar arithmetic:
  *
  * @code
  * Vector3f a{2.0f, 3.0f, 4.0f};
@@ -43,11 +58,7 @@ namespace bml {
  * auto neg        = -a;          // {-2, -3, -4}
  * auto multiplied = a * b;       // {8, 15, 24}
  * auto divided    = b / a;       // {2, 1.66667, 1.5}
- * @endcode
  *
- * Vector-to-scalar operations apply the scalar to every component:
- *
- * @code
  * auto added      = a + 2.0f;    // {4, 5, 6}
  * auto subtracted = a - 2.0f;    // {0, 1, 2}
  * auto scaled     = a * 2.0f;    // {4, 6, 8}
@@ -90,31 +101,19 @@ namespace bml {
  * The dot product is deliberately provided as dot() rather than
  * operator* because operator* performs component-wise multiplication.
  *
- * @par Cross product
+ * @par 3D cross product
  *
- * In three dimensions, the cross product produces another Vector3 that
- * is perpendicular to both input vectors.
- *
- * The cross product is calculated using:
- *
- * @code
- * {
- *     y1 * z2 - z1 * y2,
- *     z1 * x2 - x1 * z2,
- *     x1 * y2 - y1 * x2
- * }
- * @endcode
- *
- * For example:
+ * In three dimensions, the cross product produces another Vector3:
  *
  * @code
  * Vector3f a{1.0f, 0.0f, 0.0f};
  * Vector3f b{0.0f, 1.0f, 0.0f};
  *
- * auto result = a.cross(b); // {0, 0, 1}
+ * Vector3f result = a.cross(b); // {0, 0, 1}
  * @endcode
  *
- * The direction of the resulting vector follows the right-hand rule.
+ * The resulting vector is perpendicular to both input vectors, with its
+ * direction determined by the right-hand rule.
  *
  * @par Length
  *
@@ -131,7 +130,7 @@ namespace bml {
  *
  * @par Equality
  *
- * Equality compares all three components using their native == operators.
+ * Equality compares all components using their native == operators.
  * No epsilon or approximate comparison is performed.
  *
  * This means that:
@@ -140,7 +139,7 @@ namespace bml {
  * a == b
  * @endcode
  *
- * is true only when both x, y, and z components compare equal.
+ * is true only when the x, y, and z components compare equal.
  *
  * @note Floating-point equality should therefore be used with the usual
  * care associated with exact floating-point comparisons.
@@ -188,6 +187,42 @@ struct Vector3 {
     constexpr Vector3(T x, T y, T z) noexcept
         : x{x}, y{y}, z{z}
     {}
+
+
+        // ---------- Special member functions ----------
+
+        /**
+         * @brief Copy constructor.
+         *
+         * Performs a member-wise copy of the vector components.
+         */
+        Vector3(const Vector3&)            = default;
+
+    /**
+     * @brief Move constructor.
+     *
+     * Performs a member-wise move of the vector components.
+     */
+    Vector3(Vector3&&)                 = default;
+
+    /**
+     * @brief Copy assignment operator.
+     *
+     * Performs a member-wise copy of the vector components.
+     */
+    Vector3& operator=(const Vector3&) = default;
+
+    /**
+     * @brief Move assignment operator.
+     *
+     * Performs a member-wise move of the vector components.
+     */
+    Vector3& operator=(Vector3&&)      = default;
+
+    /**
+     * @brief Destructor.
+     */
+    ~Vector3()                         = default;
 
 
     // ---------- Arithmetic ----------

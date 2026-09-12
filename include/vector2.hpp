@@ -28,6 +28,24 @@ namespace bml {
  *
  * @note T must be float, double, or half_float::half.
  *
+ * @par Special member functions
+ *
+ * Vector2 explicitly defaults all five special member functions.
+ * Copy and move operations perform member-wise operations on the vector
+ * components. Vector2 does not own or manage any external resources.
+ *
+ * @code
+ * Vector2f a{1.0f, 2.0f};
+ * Vector2f b = a;            // copy construction
+ * Vector2f c = std::move(a); // move construction
+ *
+ * b = c;                     // copy assignment
+ * b = std::move(c);          // move assignment
+ * @endcode
+ *
+ * The explicitly defaulted special member functions provide the normal
+ * value-type semantics expected of a vector.
+ *
  * @par Arithmetic
  *
  * Vector2 supports component-wise vector arithmetic and scalar arithmetic:
@@ -175,8 +193,40 @@ struct Vector2 {
     constexpr Vector2(T x, T y) noexcept
         : x{x}, y{y}
     {}
+    // ---------- Special member functions ----------
 
+    /**
+     * @brief Copy constructor.
+     *
+     * Performs a member-wise copy of the vector components.
+     */
+    Vector2(const Vector2&)            = default;
 
+    /**
+     * @brief Move constructor.
+     *
+     * Performs a member-wise move of the vector components.
+     */
+    Vector2(Vector2&&)                 = default;
+
+    /**
+     * @brief Copy assignment operator.
+     *
+     * Performs a member-wise copy of the vector components.
+     */
+    Vector2& operator=(const Vector2&) = default;
+
+    /**
+     * @brief Move assignment operator.
+     *
+     * Performs a member-wise move of the vector components.
+     */
+    Vector2& operator=(Vector2&&)      = default;
+
+    /**
+     * @brief Destructor.
+     */
+    ~Vector2()                         = default;
     // ---------- Arithmetic ----------
 
     /**

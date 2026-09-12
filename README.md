@@ -32,6 +32,12 @@ BML supports the following data types:
 * double
 * long double
 * half precision float (from the Half-Therock library)
+* Vector2 half precision float
+* Vector2 float
+* Vector2 double
+* Vector3 half precision float
+* Vector3 float
+* Vector3 double
 * char
 * bool
 * std::string
